@@ -12,6 +12,8 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "seed": "tsc scripts/seed-data.ts --esModuleInterop --moduleResolution node --outDir dist && node dist/seed-data.js"
     "dev": "ts-node src/index.ts",
     "db:test": "ts-node ./lib/database/test-connection.ts"
   },
@@ -21,11 +23,14 @@
   "type": "commonjs",
   "dependencies": {
     "@prisma/client": "^6.19.0",
+    "@supabase/supabase-js": "^2.86.0",
+    "@types/uuid": "^11.0.0",
     "axios": "^1.13.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "prisma": "^6.19.0"
+    "prisma": "^6.19.0",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
@@ -33,6 +38,7 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^24.10.1",
     "jest": "^30.2.0",
+    "cross-env": "^10.1.0",
     "nodemon": "^3.1.11",
     "ts-jest": "^29.4.5",
     "ts-node": "^10.9.2",
