@@ -581,3 +581,4 @@ enum one_time_token_type {
   phone_change_token
 
   @@schema("auth")
+}
