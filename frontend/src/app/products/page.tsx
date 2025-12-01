@@ -4,9 +4,20 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select'; 
 import { Badge } from '@/components/ui/Badge';
 
 const USER_ID = "7e12bd6c-98d7-48fe-b788-48a877ea0a47"; 
+
+const UNIT_OPTIONS = [
+  { value: 'pcs', label: 'Pcs' },
+  { value: 'porsi', label: 'Porsi' },
+  { value: 'cup', label: 'Cup' },
+  { value: 'botol', label: 'Botol' },
+  { value: 'bungkus', label: 'Bungkus' },
+  { value: 'kg', label: 'Kg' },
+  { value: 'box', label: 'Box' },
+];
 
 interface Product {
   id: string;
@@ -17,9 +28,9 @@ interface Product {
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
-
+  
   const [name, setName] = useState('');
-  const [unit, setUnit] = useState('');
+  const [unit, setUnit] = useState(''); 
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -51,6 +62,11 @@ export default function ProductsPage() {
       return;
     }
 
+    if (!unit) {
+      setError("Silakan pilih satuan unit");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const res = await fetch('http://localhost:5000/api/products', {
@@ -59,7 +75,7 @@ export default function ProductsPage() {
         body: JSON.stringify({
           user_id: USER_ID,
           name: name,
-          unit: unit || 'pcs'
+          unit: unit 
         })
       });
 
@@ -70,7 +86,7 @@ export default function ProductsPage() {
       }
 
       setName('');
-      setUnit('');
+      setUnit(''); 
       fetchProducts();
       
     } catch (err: any) {
@@ -93,7 +109,6 @@ export default function ProductsPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* BAGIAN KIRI: FORM INPUT */}
           <div className="lg:col-span-1">
             <Card className="sticky top-8">
               <CardHeader>
@@ -102,20 +117,21 @@ export default function ProductsPage() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
-
+                  
                   <Input 
                     label="Nama Produk" 
                     placeholder="Contoh: Ayam Bakar Madu"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    error={error} 
+                    error={!name && error ? error : ''}
                   />
 
-                  <Input 
+                  <Select 
                     label="Satuan (Unit)" 
-                    placeholder="Contoh: porsi, cup, pcs"
+                    options={UNIT_OPTIONS}
                     value={unit}
                     onChange={(e) => setUnit(e.target.value)}
+                    error={!unit && error ? "Pilih satuan unit" : ''}
                   />
 
                   <Button 
