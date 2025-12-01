@@ -1,7 +1,6 @@
 import express from 'express'
-import cors from 'cors'
 import dotenv from 'dotenv'
-
+import cors from 'cors';
 import productRoutes from './routes/productRoutes';
 import salesRoutes from './routes/salesRoutes';
 import { optionalAuth } from '../lib/auth/middleware';
@@ -12,12 +11,14 @@ const app = express()
 const PORT = process.env.PORT || 5000
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
+  origin: true, 
+  credentials: true, 
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json());
-app.use(optionalAuth); // Pasang optional auth agar req.user tersedia jika token valid
+app.use(optionalAuth); 
 
 app.use('/api/products', productRoutes); 
 app.use('/api/sales', salesRoutes);

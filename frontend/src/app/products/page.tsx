@@ -2,12 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select'; 
 import { Badge } from '@/components/ui/Badge';
-
-const USER_ID = "7e12bd6c-98d7-48fe-b788-48a877ea0a47"; 
 
 const UNIT_OPTIONS = [
   { value: 'pcs', label: 'Pcs' },
@@ -26,6 +25,7 @@ interface Product {
 }
 
 export default function ProductsPage() {
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   
@@ -34,19 +34,49 @@ export default function ProductsPage() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}` 
+    };
+  };
+
   const fetchProducts = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`http://localhost:5000/api/products?user_id=${USER_ID}`);
-      const data = await res.json();
-      if (data.success) {
-        setProducts(data.data);
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('token');
+        const userId = localStorage.getItem('user_id');
+
+        // --- TAMBAHAN PENTING ---
+        if (!token || !userId) {
+          console.warn("Belum ada token, redirect ke login...");
+          router.push('/login');
+          return;
+        }
+        // ------------------------
+
+        // Gunakan Backticks (`) bukan single quote (') agar variable ${userId} terbaca!
+        const res = await fetch(`http://localhost:5000/api/products?user_id=${userId}`, {
+          headers: getAuthHeaders() 
+        });
+
+        if (res.status === 401) {
+          // Token expired atau tidak valid
+          localStorage.removeItem('token'); // Bersihkan token rusak
+          router.push('/login'); 
+          return;
+        }
+
+        const data = await res.json();
+        if (data.success) {
+          setProducts(data.data);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("Gagal ambil produk:", err);
-    } finally {
-      setLoading(false);
-    }
   };
 
   useEffect(() => {
@@ -67,15 +97,17 @@ export default function ProductsPage() {
       return;
     }
 
-    setIsSubmitting(true);
+  setIsSubmitting(true);
     try {
+      const userId = localStorage.getItem('user_id'); 
+
       const res = await fetch('http://localhost:5000/api/products', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(), 
         body: JSON.stringify({
-          user_id: USER_ID,
+          user_id: userId,
           name: name,
-          unit: unit 
+          unit: unit
         })
       });
 

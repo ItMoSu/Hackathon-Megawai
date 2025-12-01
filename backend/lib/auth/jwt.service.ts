@@ -1,9 +1,13 @@
-import { createRemoteJWKSet, jwtVerify } from 'jose';
-import { expectedAudience, expectedIssuer, jwksUri } from './jwt.config';
+import { jwtVerify } from 'jose';
 import type { VerifiedToken } from './types';
 
-// Inisialisasi JWKS di global scope agar caching bekerja optimal
-const jwks = createRemoteJWKSet(new URL(jwksUri));
+const jwtSecret = process.env.SUPABASE_JWT_SECRET;
+
+if (!jwtSecret) {
+  throw new Error('SUPABASE_JWT_SECRET wajib ada di .env');
+}
+
+const secretKey = new TextEncoder().encode(jwtSecret);
 
 export async function verifyToken(token: string): Promise<VerifiedToken> {
   if (!token) {
@@ -11,10 +15,7 @@ export async function verifyToken(token: string): Promise<VerifiedToken> {
   }
 
   try {
-    const { payload } = await jwtVerify(token, jwks, {
-      issuer: expectedIssuer,
-      audience: expectedAudience,
-    });
+    const { payload } = await jwtVerify(token, secretKey);
 
     if (!payload?.sub) {
       throw new Error('Payload token tidak memiliki sub');
@@ -22,8 +23,9 @@ export async function verifyToken(token: string): Promise<VerifiedToken> {
 
     return payload as VerifiedToken;
   } catch (error) {
-    // Tangani semua error jose sebagai unauthorized
     const message = error instanceof Error ? error.message : 'Token tidak valid';
+    console.error("JWT Verify Error:", message); 
+    
     throw new Error(`Verifikasi token gagal: ${message}`);
   }
 }

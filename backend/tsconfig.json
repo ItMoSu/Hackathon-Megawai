@@ -11,6 +11,6 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true
   },
-  "include": ["./src/**/*", "./scripts/**/*","lib/**/*"],
+  "include": ["./src/**/*", "./scripts/**/*","lib/**/*", "./frontend/src/lib/api.ts"],
   "exclude": ["node_modules"]
 }
