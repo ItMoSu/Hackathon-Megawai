@@ -399,3 +399,48 @@ export async function getProductAnalytics(
 export async function testDbConnection(): Promise<void> {
   await prisma.$queryRaw`SELECT 1`
 }
+
+export async function upsertAnalyticsResult(
+  userId: string,
+  datasetId: string | null,
+  productId: string,
+  date: Date,
+  data: {
+    actualQty: number;
+    burstScore: number;
+    burstLevel: string;
+    aiInsight: string; 
+  }
+) {
+  try {
+    if (!userId) throw new Error('userId is required');
+
+    return await prisma.daily_analytics.upsert({
+      where: {
+        product_id_metric_date: {
+          product_id: productId,
+          metric_date: date,
+        },
+      },
+      create: {
+        user_id: userId,
+        dataset_id: datasetId,
+        product_id: productId,
+        metric_date: date,
+        actual_quantity: data.actualQty,
+        burst_score: data.burstScore,
+        burst_level: data.burstLevel,
+        ai_insight: data.aiInsight, 
+      },
+      update: {
+        actual_quantity: data.actualQty,
+        burst_score: data.burstScore,
+        burst_level: data.burstLevel,
+        ai_insight: data.aiInsight,
+      },
+    });
+  } catch (error) {
+    console.error('upsertAnalyticsResult failed', error);
+    throw error;
+  }
+}
