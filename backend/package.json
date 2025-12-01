@@ -12,9 +12,7 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "seed": "tsc scripts/seed-data.ts --esModuleInterop --moduleResolution node --outDir dist && node dist/seed-data.js"
-    "dev": "ts-node src/index.ts",
+    "seed": "tsc scripts/seed-data.ts --esModuleInterop --moduleResolution node --outDir dist && node dist/seed-data.js",
     "db:test": "ts-node ./lib/database/test-connection.ts"
   },
   "keywords": [],
