@@ -5,11 +5,20 @@
   --foreground: #171717;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+@theme {
+  --color-primary: #DC2626;
+  --color-primary-hover: #B91C1C;
+  --color-primary-foreground: #FFFFFF;
+
+  --color-secondary: #000000;
+  --color-secondary-foreground: #FFFFFF;
+
+  --color-background: #FFFFFF;
+  --color-surface: #FAFAFA;
+  --color-border: #E5E7EB;
+
+  --color-danger: #EF4444;
+  --color-danger-hover: #DC2626;
 }
 
 @media (prefers-color-scheme: dark) {
