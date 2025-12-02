@@ -1,10 +1,10 @@
-
+// --- HEADER UNTUK MENGATASI MASALAH RESOLUSI PATH & IMPORT ---
 const { createClient } = require('@supabase/supabase-js');
 const dotenv = require('dotenv');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 
-
+// --- I. KONFIGURASI SUPABASE & ENV ---
 
 dotenv.config({ path: path.resolve(__dirname, '..', '.env') }); 
 
@@ -12,8 +12,9 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY; 
 
 
-const PLACEHOLDER_USER_ID = '7e12bd6c-98d7-48fe-b788-48a877ea0a47'; 
-
+// UUID pengguna AKTIF dari tabel auth.users Supabase Anda. WAJIB!
+const PLACEHOLDER_USER_ID = '5a571f1e-3130-4438-8da0-ef691273a38c'; // <--- INI BUAT USER ID INI PENTING YAA
+// --- AKHIR PERHATIAN ---
 
 if (!supabaseUrl || !supabaseServiceKey) {
     console.error("❌ ERROR KONFIGURASI: SUPABASE_URL atau SUPABASE_SERVICE_ROLE_KEY tidak ditemukan di .env.");
@@ -23,17 +24,18 @@ if (!supabaseUrl || !supabaseServiceKey) {
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 
-// --- II. KONSTANTA & TIPE DATA ---
+// --- II. KONSTANTA & TIPE DATA (Berdasarkan Skema Anda) ---
 
-// ID dataset yang akan kita buat di awal skrip
 const DATASET_ID_FOR_SEEDS = uuidv4(); 
 
-const FILE_TYPES = ['xlsx', 'csv', 'pdf', 'docx', 'txt'];
+// [1] Nilai untuk sales.source (CHECK CONSTRAINT FINAL ANDA)
+const SALE_SOURCES = ['manual', 'xlsx', 'csv', 'pdf', 'docx']; 
 
-
-const SALE_SOURCES = ['xlsx', 'csv', 'pdf', 'docx', 'txt']; 
+// [2] Nilai untuk datasets.source_file_type (Asumsi check constraint)
+const FILE_TYPES = ['xlsx', 'csv', 'pdf', 'docx', 'txt']; 
 const DUMMY_FILE_NAME = 'initial_seed_data';
-const DUMMY_FILE_TYPE = FILE_TYPES[0];
+const DUMMY_FILE_TYPE = FILE_TYPES[0]; // Gunakan 'xlsx'
+const DUMMY_STATUS = 'ready'; // Mematuhi datasets_status_check
 
 interface ProductData {
   name: string;
@@ -41,7 +43,7 @@ interface ProductData {
   unit: string;
 }
 
-
+// Skema datasets (image_0b2811.png)
 interface DatasetSeed {
   id: string;
   user_id: string; 
@@ -49,11 +51,12 @@ interface DatasetSeed {
   source_file_name: string;
   source_file_type: string;
   storage_path: string;
-  status: string;
+  status: string; // Harus salah satu dari ['uploaded', 'processing', 'ready', 'failed']
   created_at: string;
   updated_at: string;
 }
 
+// Skema products (image_178802.png)
 interface ProductSeed extends ProductData {
   id: string; 
   user_id: string; 
@@ -68,23 +71,21 @@ interface Sale {
   quantity: number; 
   revenue: number; 
   user_id: string; 
-  source: string; 
+  source: string; // Harus mematuhi sales_source_check
 }
 
-// Data dummy dataset (WAJIB diisi)
 const SEEDED_DATASETS: DatasetSeed[] = [{
     id: DATASET_ID_FOR_SEEDS,
-    user_id: PLACEHOLDER_USER_ID, 
+    user_id: PLACEHOLDER_USER_ID, // Mematuhi datasets_user_id_fkey
     name: 'Sample Data HACKATHON',
     source_file_name: DUMMY_FILE_NAME,
-    source_file_type: DUMMY_FILE_TYPE, // 
+    source_file_type: DUMMY_FILE_TYPE, 
     storage_path: `/data/${PLACEHOLDER_USER_ID}/${DATASET_ID_FOR_SEEDS}`,
-    status: 'ready', 
+    status: DUMMY_STATUS, // Mematuhi datasets_status_check
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
 }];
 
-// 5 Produk UMKM Makanan Anda
 const RAW_PRODUCTS: ProductData[] = [
     { name: 'Keripik Singkong Balado', price: 15000, unit: 'Bungkus' },
     { name: 'Nasi Goreng Spesial', price: 25000, unit: 'Porsi' },
@@ -96,8 +97,8 @@ const RAW_PRODUCTS: ProductData[] = [
 const SEEDED_PRODUCTS: ProductSeed[] = RAW_PRODUCTS.map(p => ({
     ...p,
     id: uuidv4(), 
-    user_id: PLACEHOLDER_USER_ID,
-    dataset_id: DATASET_ID_FOR_SEEDS, // Merujuk ke dataset yang baru dibuat
+    user_id: PLACEHOLDER_USER_ID, // Mematuhi products_user_id_fkey
+    dataset_id: DATASET_ID_FOR_SEEDS, // Mematuhi products_dataset_id_fkey
     is_active: true,
     created_at: new Date().toISOString(),
 }));
@@ -116,7 +117,7 @@ function generateSalesData(days: number): Sale[] {
     currentDate.setDate(today.getDate() - i);
     const dateString = currentDate.toISOString().split('T')[0];
     
-    // ... (Logika Multiplier tetap)
+    // Logika Multiplier tetap
     const dayOfWeek = currentDate.getDay(); 
     const dayOfMonth = currentDate.getDate();
     let baseMultiplier = 1;
@@ -136,7 +137,7 @@ function generateSalesData(days: number): Sale[] {
         salesForProduct = Math.min(salesForProduct, remainingSales);
         
         if (salesForProduct > 0) {
-            // Pilih sumber secara acak dari list yang diizinkan (file types)
+            // Pilih sumber secara acak dari SALE_SOURCES (manual, xlsx, etc.)
             const randomSourceIndex = Math.floor(Math.random() * SALE_SOURCES.length);
 
             sales.push({
@@ -145,7 +146,7 @@ function generateSalesData(days: number): Sale[] {
                 quantity: salesForProduct,
                 revenue: salesForProduct * product.price,
                 user_id: PLACEHOLDER_USER_ID, 
-                source: SALE_SOURCES[randomSourceIndex], // Menggunakan nilai check constraint
+                source: SALE_SOURCES[randomSourceIndex], // Mematuhi sales_source_check
             });
             remainingSales -= salesForProduct;
         }
