@@ -24,6 +24,7 @@ import { ProductIntelligence, ForecastPrediction } from "@/types/intelligence";
 import { InfoTooltip } from "./InfoTooltip";
 import { OnboardingModal } from "./OnboardingModal";
 import { ActionCard } from "./ActionCard";
+import { AlertCard } from "./AlertCard";
 
 type IntelligenceDashboardProps = {
   productId: string;
@@ -98,6 +99,8 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  
+  const [alertDismissed, setAlertDismissed] = useState(false); 
 
   const fetchData = async () => {
     if (!productId) return;
@@ -129,28 +132,31 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
   };
 
   useEffect(() => {
-    fetchData();
+    setAlertDismissed(false);
   }, [productId]);
 
   useEffect(() => {
+    fetchData(); 
     const interval = setInterval(fetchData, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, [productId]);
 
   const predictions = intelligence?.forecast?.predictions || [];
   const bandData = useMemo(() => buildBandData(predictions), [predictions]);
+  
   const weekendAreas = useMemo(() => {
     const areas: { x1: string; x2: string }[] = [];
     bandData.forEach((item, idx) => {
       if (item.isWeekend) {
         const next = bandData[idx + 1];
-        areas.push({ x1: item.label, x2: next ? next.label : item.label });
+        if (next) {
+            areas.push({ x1: item.label, x2: next.label });
+        }
       }
     });
     return areas;
   }, [bandData]);
 
-  const paydayLabels = bandData.filter((d) => d.isPayday).map((d) => d.label);
   const peak = bandData.reduce(
     (acc, cur) => (cur && acc && cur.predicted_quantity > acc.predicted_quantity ? cur : acc),
     bandData[0] || null,
@@ -229,6 +235,17 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
 
   return (
     <div className="space-y-6">
+      {/* ALERT COMPONENT  */}
+      {intelligence.realtime.burst.score > 2.5 && !alertDismissed && (
+        <AlertCard 
+          productName={intelligence.productName || "Produk"}
+          score={intelligence.realtime.burst.score}
+          level={intelligence.realtime.burst.severity}
+          onDismiss={() => setAlertDismissed(true)}
+        />
+      )}
+
+      {/* HEADER DASHBOARD */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -275,8 +292,9 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
         </div>
       </div>
 
-      {/* Real-time cards */}
+      {/* METRICS CARDS */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {/* Status Penjualan */}
         <Card className="border-l-4 border-l-blue-500">
           <CardHeader className="flex flex-row items-start justify-between">
             <div className="space-y-1">
@@ -292,14 +310,12 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
                   ? `Naik ${pctChange}% dibanding 2 minggu lalu.`
                   : "Sama seperti 2 minggu lalu."}
               </p>
-              <Button size="sm" variant="outline" className="w-fit text-xs">
-                Lihat detail perbandingan
-              </Button>
             </div>
             <Activity className="h-8 w-8 text-blue-500" />
           </CardHeader>
         </Card>
 
+        {/* Deteksi Lonjakan */}
         <Card className={`border-l-4 ${isViral ? "border-l-red-500" : "border-l-emerald-500"}`}>
           <CardHeader className="flex flex-row items-start justify-between">
             <div className="space-y-1">
@@ -313,9 +329,6 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
                   <p className="text-sm text-red-700">
                     Penjualan hari ini {burst?.score}x lebih tinggi dari biasanya.
                   </p>
-                  <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-                    ⚠️ Produk sedang viral. Pastikan stok cukup 3-7 hari ke depan.
-                  </div>
                 </div>
               ) : (
                 <p className="text-sm text-gray-600">Tidak ada lonjakan mendadak. Semuanya terkendali.</p>
@@ -325,16 +338,17 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
           </CardHeader>
         </Card>
 
+        {/* Tingkat Kepercayaan */}
         <Card className="border-l-4 border-l-purple-500">
           <CardHeader className="flex flex-row items-start justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase text-gray-400">Tingkat Kepercayaan</p>
               <h3 className="flex items-center gap-2 text-lg font-bold text-gray-900">
                 {friendlyConf.pct >= 75 ? "Prediksi Akurat" : friendlyConf.pct >= 60 ? "Cukup Akurat" : "Perlu Hati-hati"}
-                <InfoTooltip message="Semakin lama Anda pakai sistem ini, semakin akurat. Setelah 90 hari: akurasi bisa 85-90%." />
+                <InfoTooltip message="Semakin lama Anda pakai sistem ini, semakin akurat." />
               </h3>
               <p className="text-sm text-gray-600">
-                Analisis pola harian + Machine Learning. Data {dataQualityDays} hari → akurasi ~{friendlyConf.pct}%.
+                Data {dataQualityDays} hari → akurasi ~{friendlyConf.pct}%.
               </p>
             </div>
             <Sparkles className="h-8 w-8 text-purple-500" />
@@ -342,20 +356,19 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
         </Card>
       </div>
 
-      {/* Forecast section */}
+      {/* CHART FORECAST */}
       <Card>
         <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
               📊 Prediksi 7 Hari ke Depan
-              <InfoTooltip message="Garis biru: prediksi paling mungkin. Area hijau: zona kemungkinan. Kuning: weekend. 💰: gajian." />
             </h3>
             <p className="text-sm text-gray-500">Bahasa sederhana, langsung bisa dipakai.</p>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-            💡 Cara baca: Garis biru = prediksi paling mungkin. Area hijau muda = rentang naik-turun. Kuning = akhir pekan. 💰 = gajian.
+            💡 Cara baca: Garis biru = prediksi paling mungkin. Area hijau muda = rentang naik-turun.
           </div>
           <div className="h-80 w-full">
             {bandData.length ? (
@@ -378,137 +391,30 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
                       fillOpacity={0.4}
                     />
                   ))}
-                  {peakStrategy ? (
-                    <>
-                      <ReferenceLine
-                        x={peakStrategy.peak_info.date}
-                        stroke="#ef4444"
-                        strokeWidth={2}
-                        strokeDasharray="5 5"
-                        label={{
-                          value: "⚠️ PEAK",
-                          position: "top",
-                          fill: "#ef4444",
-                          fontSize: 11,
-                          fontWeight: "bold",
-                        }}
-                      />
-                      <ReferenceArea
-                        x1={predictions[0]?.date}
-                        x2={peakStrategy.peak_info.date}
-                        fill="#dcfce7"
-                        fillOpacity={0.2}
-                        label={{ value: "FASE 1: Naik", position: "insideTopLeft", fontSize: 10 }}
-                      />
-                      <ReferenceArea
-                        x1={peakStrategy.peak_info.date}
-                        x2={predictions[predictions.length - 1]?.date}
-                        fill="#fed7aa"
-                        fillOpacity={0.2}
-                        label={{ value: "FASE 2: Turun", position: "insideTopRight", fontSize: 10 }}
-                      />
-                    </>
-                  ) : null}
+                  {peakStrategy && (
+                    <ReferenceLine
+                      x={peakStrategy.peak_info.date}
+                      stroke="#ef4444"
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      label={{ value: "⚠️ PEAK", position: "top", fill: "#ef4444", fontSize: 11 }}
+                    />
+                  )}
                   <XAxis dataKey="label" tick={{ fontSize: 12 }} />
                   <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => numberFormatter.format(v as number)} />
-                  <Tooltip
-                    formatter={(value) => (typeof value === "number" ? numberFormatter.format(value as number) : value)}
-                    labelFormatter={(label, payload) => {
-                      const item = payload?.[0]?.payload as any;
-                      const tags = [];
-                      if (item?.isWeekend) tags.push("Weekend");
-                      if (item?.isPayday) tags.push("Gajian");
-                      return `${label}${tags.length ? ` • ${tags.join(" / ")}` : ""}`;
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="upper"
-                    stroke="none"
-                    baseLine={(d: any) => d?.lower}
-                    fill="url(#band)"
-                    fillOpacity={0.3}
-                  />
-                  <Line type="monotone" dataKey="upper" stroke="#93c5fd" strokeDasharray="5 5" dot={false} name="Zona atas" />
-                  <Line
-                    type="monotone"
-                    dataKey="predicted_quantity"
-                    stroke="#2563eb"
-                    strokeWidth={3}
-                    dot={{ r: 4 }}
-                    name="Prediksi utama"
-                  />
-                  <Line type="monotone" dataKey="lower" stroke="#f59e0b" strokeDasharray="5 5" dot={false} name="Zona bawah" />
-                  {peak ? (
-                    <ReferenceDot
-                      x={peak.label}
-                      y={peak.predicted_quantity}
-                      r={6}
-                      fill="#16a34a"
-                      stroke="none"
-                      label={{ position: "top", value: "🎯 PEAK! Siapkan stok ekstra" }}
-                    />
-                  ) : null}
+                  <Tooltip />
+                  <Area type="monotone" dataKey="upper" stroke="none" baseLine={(d: any) => d?.lower} fill="url(#band)" fillOpacity={0.3} />
+                  <Line type="monotone" dataKey="predicted_quantity" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex h-full items-center justify-center text-sm text-gray-500">Tidak ada data forecast.</div>
             )}
           </div>
-
-          {/* Insight Box */}
-          {peakStrategy ? (
-            <div className="rounded-lg border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-green-50 p-4">
-              <div className="mb-3 flex items-start gap-2">
-                <span className="text-2xl">🎯</span>
-                <div>
-                  <h4 className="text-sm font-bold text-gray-900">Insight Penting: Strategi 2 Fase</h4>
-                  <p className="mt-1 text-xs text-gray-600">
-                    Penjualan akan peak pada {peakStrategy.peak_info.day_name}, lalu turun. Gunakan strategi bertahap:
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                {peakStrategy.phases.map((phase: any, idx: number) => (
-                  <div key={idx} className="rounded border border-gray-200 bg-white p-3">
-                    <div className="mb-1 flex items-center gap-2">
-                      <span>{phase.icon}</span>
-                      <span className="text-xs font-semibold text-gray-800">{phase.phase_name}</span>
-                    </div>
-                    <p className="text-xs text-gray-700">→ {phase.advice}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-3 rounded bg-green-100 p-2 text-center">
-                <p className="text-xs text-green-800">
-                  ✅ Total efisien: <span className="font-bold">{peakStrategy.savings.total_smart} porsi</span>
-                </p>
-                <p className="mt-0.5 text-xs text-green-700">
-                  Hemat {peakStrategy.savings.amount} porsi vs produksi flat
-                </p>
-              </div>
-              <div className="mt-2 text-xs text-gray-600 italic">
-                💡 Jangan produksi rata {Math.floor(peakStrategy.savings.total_naive / 7)} porsi/hari. Peak hanya sebentar, lalu turun.
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-              <div className="flex items-start gap-2">
-                <span className="text-xl">💡</span>
-                <div>
-                  <p className="mb-1 text-sm font-semibold text-gray-900">Insight Penting</p>
-                  <p className="text-sm text-gray-700">
-                    Penjualan {trend === "INCREASING" ? "diprediksi naik" : trend === "DECREASING" ? "berpotensi turun" : "stabil"}.
-                    Siapkan stok ~{numberFormatter.format(Math.round(total7d || 0))} porsi untuk 7 hari.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
 
-      {/* Insights summary & Recommendations */}
+      {/* RECOMMENDATIONS */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="flex items-center justify-between">
@@ -519,30 +425,12 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
             <div className="rounded-lg bg-gray-50 px-4 py-3">
               <p className="text-xs uppercase text-gray-500">Total 7 hari</p>
               <p className="text-3xl font-bold text-gray-900">📦 {numberFormatter.format(Math.round(total7d))} porsi</p>
-              <p className="text-sm text-gray-600">
-                Atau {numberFormatter.format(Math.max(1, Math.round(perDay || 0)))} per hari
-              </p>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Tren</span>
-              <span
-                className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${
-                  trend === "INCREASING"
-                    ? "bg-green-100 text-green-700"
-                    : trend === "DECREASING"
-                    ? "bg-red-100 text-red-700"
-                    : "bg-gray-100 text-gray-700"
-                }`}
-              >
-                {trend === "INCREASING" ? "Naik" : trend === "DECREASING" ? "Turun" : "Stabil"}
+              <span className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
+                {trend}
               </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Tingkat keyakinan</span>
-              <span className="text-sm font-semibold text-gray-900">{friendlyConf.pct}% akurat</span>
-            </div>
-            <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-xs text-blue-800">
-              Bisa meleset +/-2-3 porsi per hari. Pantau kembali H-1.
             </div>
             <Button className="w-full">Buat Rencana Stok</Button>
           </CardContent>
@@ -559,19 +447,12 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
             {!intelligence.recommendations.length ? (
               <p className="text-sm text-gray-500">Belum ada rekomendasi.</p>
             ) : (
-              intelligence.recommendations.map((rec, idx) => <ActionCard key={`${rec.type}-${idx}`} rec={rec} />)
+              intelligence.recommendations.map((rec, idx) => (
+                <ActionCard key={`${rec.type}-${idx}`} rec={rec} />
+              ))
             )}
           </CardContent>
         </Card>
-      </div>
-
-      <div className="mt-6 border-t border-gray-200 pt-4 text-center">
-        <p className="text-xs text-gray-500">
-          Ada pertanyaan?
-          <button className="ml-1 text-blue-600 hover:underline">Lihat Panduan</button>
-          {" | "}
-          <button className="ml-1 text-blue-600 hover:underline">Lapor Masalah</button>
-        </p>
       </div>
 
       <OnboardingModal open={showOnboarding} onClose={() => setShowOnboarding(false)} />
