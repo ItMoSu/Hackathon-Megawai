@@ -1,12 +1,14 @@
 import express from 'express';
 import { requireAuth } from '../../lib/auth/middleware';
 import { getSalesData } from '../../lib/database/queries';
-import { summarizeProductMomentum } from '../../lib/analytics/momentum';
+// Update import ke fungsi baru
+import { calculateMomentum } from '../../lib/analytics/momentum';
 
 const router = express.Router();
 
 router.use(requireAuth);
 
+// GET /api/analytics/momentum?productId=...
 router.get('/momentum', async (req, res) => {
   try {
     const userId = req.user?.sub;
@@ -25,7 +27,7 @@ router.get('/momentum', async (req, res) => {
       });
     }
 
-    // Ambil data penjualan maksimal 90 hari terakhir, cukup untuk window 7/14/30 hari.
+    // Ambil data penjualan 90 hari terakhir (cukup untuk window 30 hari + lag)
     const sales = await getSalesData(String(userId), productId, 90);
 
     if (!sales.length) {
@@ -35,29 +37,22 @@ router.get('/momentum', async (req, res) => {
       });
     }
 
-    const series = sales.map((row) => ({
-      date: row.date,
+    // Mapping data database ke format SalesData yang diminta momentum.ts
+    // (date: string | Date, value: number)
+    const salesData = sales.map((row) => ({
+      date: row.date,    // Pastikan ini Date object atau ISO string
       value: row.quantity,
     }));
 
-    const momentum = summarizeProductMomentum({
-      productId,
-      productName: sales[0]?.productName,
-      series,
-      windows: [7, 14, 30],
-    });
+    // Panggil fungsi BARU: calculateMomentum
+    const result = calculateMomentum(productId, salesData);
 
-    if (!momentum) {
-      return res.status(400).json({
-        success: false,
-        error: 'Data tidak cukup untuk menghitung momentum',
-      });
-    }
-
+    // Kirim response
     return res.json({
       success: true,
-      data: momentum,
+      data: result,
     });
+
   } catch (error) {
     console.error('GET /api/analytics/momentum error:', error);
     return res.status(500).json({
@@ -68,5 +63,3 @@ router.get('/momentum', async (req, res) => {
 });
 
 export default router;
-
-
