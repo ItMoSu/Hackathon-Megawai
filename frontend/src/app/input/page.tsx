@@ -1,4 +1,4 @@
-import SalesForm from "@/components/ui/SalesForm";
+import SalesForm from "@/components/SalesForm";
 
 export default function InputPage() {
     return (

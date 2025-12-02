@@ -10,12 +10,20 @@ const [loading, setLoading] = useState(false);
 const [message, setMessage] = useState("");
 const [isError, setIsError] = useState(false);
 
-const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState({
     product_name: "Baranglu", 
     quantity: 0,
     sale_date: new Date().toISOString().split("T")[0],
-    dataset_id: "29663b82-9ca8-4dd4-b703-8468fe034a09"
+    dataset_id: "00000000000" //hardcode berdasrkan user_id gua
 });
+
+const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}` 
+    };
+};
 
 const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,35 +31,41 @@ const handleSubmit = async (e: React.FormEvent) => {
     setMessage("");
     setIsError(false);
 
+    const token = localStorage.getItem("token");
+    if (!token) {
+        setMessage("❌ Anda belum login! Token tidak ditemukan.");
+        setIsError(true);
+        setLoading(false);
+        return;
+    }
+
     if (formData.quantity < 0) {
-    setMessage("Quantity tidak boleh negatif, Bang!");
-    setIsError(true);
-    setLoading(false);
-    return;
+        setMessage("Quantity tidak boleh negatif, Bang!");
+        setIsError(true);
+        setLoading(false);
+        return;
     }
 
     try {
-    const res = await fetch("http://localhost:5000/api/sales", {
+        const res = await fetch("http://localhost:5000/api/sales", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(), 
         body: JSON.stringify(formData),
-    });
+        });
 
-    const data = await res.json();
+        const data = await res.json();
 
-    if (!res.ok) throw new Error(data.error || "Gagal simpan");
-
-    setMessage("✅ Data berhasil disimpan!");
-    setFormData({ ...formData, quantity: 0, product_name: "" });
+        if (!res.ok) throw new Error(data.error || "Gagal simpan");
+        setMessage("✅ Data berhasil disimpan!");
+        setFormData({ ...formData, quantity: 0, product_name: "" });
 
     } catch (err) {
         const errorMessage = (err as Error).message || "Terjadi kesalahan";
-        
         setMessage("❌ Error: " + errorMessage);
         setIsError(true);
-        } finally {
+    } finally {
         setLoading(false);
-        }
+    }
 };
 
     return (

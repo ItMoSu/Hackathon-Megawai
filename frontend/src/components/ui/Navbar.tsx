@@ -10,6 +10,7 @@ const navLinks = [
 { name: "Home", href: "/" },
 { name: "Products", href: "/products" },
 { name: "Dashboard", href: "/dashboard" },
+{ name: "Input Data", href: "/input" },
 ];
 
 export default function Navbar() {
