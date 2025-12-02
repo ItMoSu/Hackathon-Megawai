@@ -11,10 +11,10 @@ const [message, setMessage] = useState("");
 const [isError, setIsError] = useState(false);
 
 const [formData, setFormData] = useState({
-    product_name: "", // Sesuaikan sama backend lu
+    product_name: "Baranglu", 
     quantity: 0,
     sale_date: new Date().toISOString().split("T")[0],
-    dataset_id: "e6f4a8d0-xxxx-xxxx-xxxx-xxxxxxxxxxxx" // ⚠️ GANTI PAKE DATASET ID DARI DB LU (Bebas salah satu aja)
+    dataset_id: "29663b82-9ca8-4dd4-b703-8468fe034a09"
 });
 
 const handleSubmit = async (e: React.FormEvent) => {
