@@ -17,13 +17,13 @@ router.get('/momentum', async (req, res) => {
     if (!userId) {
       return res
         .status(401)
-        .json({ success: false, error: 'User tidak terotentikasi' });
+        .json({ success: false, error: 'User not authenticated' });
     }
 
     if (!productId || typeof productId !== 'string') {
       return res.status(400).json({
         success: false,
-        error: 'parameter productId wajib diisi',
+        error: 'productId parameter is required',
       });
     }
 
@@ -33,7 +33,7 @@ router.get('/momentum', async (req, res) => {
     if (!sales.length) {
       return res.status(400).json({
         success: false,
-        error: 'Belum ada data penjualan untuk produk ini',
+        error: 'No sales data found for this product',
       });
     }
 
@@ -57,7 +57,7 @@ router.get('/momentum', async (req, res) => {
     console.error('GET /api/analytics/momentum error:', error);
     return res.status(500).json({
       success: false,
-      error: 'Gagal menghitung momentum produk',
+      error: 'Failed to calculate product momentum',
     });
   }
 });
