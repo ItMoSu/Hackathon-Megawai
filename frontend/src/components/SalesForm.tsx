@@ -14,7 +14,6 @@ const [isError, setIsError] = useState(false);
     product_name: "Baranglu", 
     quantity: 0,
     sale_date: new Date().toISOString().split("T")[0],
-    dataset_id: "00000000000" //hardcode berdasrkan user_id gua
 });
 
 const getAuthHeaders = () => {
