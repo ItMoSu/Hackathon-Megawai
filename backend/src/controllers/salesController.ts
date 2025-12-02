@@ -25,6 +25,13 @@ export const createSalesEntry = async (req: Request, res: Response) => {
     const saleDateObj = new Date(sale_date);
     const qtyNumber = Number(quantity);
 
+    if (qtyNumber < 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Quantity tidak boleh negatif" 
+      });
+    }
+    
     await bulkUpsertSales(userId, dataset_id, [{
       productName: product_name, 
       date: saleDateObj,
