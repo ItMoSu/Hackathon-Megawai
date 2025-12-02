@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select'; 
 import { Badge } from '@/components/ui/Badge';
 import { TrendChart } from '@/components/TrendChart';
+import Navbar from '@/components/ui/Navbar';
 
 const UNIT_OPTIONS = [
   { value: 'pcs', label: 'Pcs' },
@@ -131,6 +132,7 @@ export default function ProductsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
+      <Navbar />
       <div className="max-w-7xl mx-auto space-y-8">
         
         <div className="flex justify-between items-center">
