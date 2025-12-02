@@ -24,6 +24,7 @@ import { ProductIntelligence, ForecastPrediction } from "@/types/intelligence";
 import { InfoTooltip } from "./InfoTooltip";
 import { OnboardingModal } from "./OnboardingModal";
 import { ActionCard } from "./ActionCard";
+import { AlertCard } from "./AlertCard";
 
 type IntelligenceDashboardProps = {
   productId: string;
@@ -98,6 +99,7 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [alertDismissed, setAlertDismissed] = useState(false);  
 
   const fetchData = async () => {
     if (!productId) return;
@@ -129,7 +131,7 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
   };
 
   useEffect(() => {
-    fetchData();
+    setAlertDismissed(false);
   }, [productId]);
 
   useEffect(() => {
@@ -229,6 +231,24 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
 
   return (
     <div className="space-y-6">
+  {/* {intelligence && 
+   intelligence.realtime.burst.score > 2.5 && 
+   !alertDismissed && (
+    <AlertCard 
+      productName={intelligence.productName || "Produk"}
+      score={intelligence.realtime.burst.score}
+      level={intelligence.realtime.burst.severity}
+      onDismiss={() => setAlertDismissed(true)}
+    />
+  )} */}
+    {true && ( // intelligence.realtime.burst.score > 2.5 diganti true
+      <AlertCard 
+        productName={intelligence?.productName || "Contoh Produk Viral"}
+        score={4.2} // Hardcode nilai tinggi
+        level="CRITICAL"
+        onDismiss={() => setAlertDismissed(true)}
+      />
+    )}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="flex items-center gap-2">
