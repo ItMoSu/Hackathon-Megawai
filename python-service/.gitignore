@@ -1,0 +1,8 @@
+models/*.pkl
+models/*_metadata.json
+logs/*.log
+logs/*.json
+__pycache__/
+*.pyc
+.env
+venv/

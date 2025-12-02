@@ -453,3 +453,77 @@ export async function upsertAnalyticsResult(
     throw error;
   }
 }
+
+/**
+ * Fetch aggregated sales data for a product within the last N days.
+ */
+export async function getSalesData(
+  userId: string,
+  productId: string,
+  days: number,
+): Promise<{ date: Date; quantity: number; productName?: string }[]> {
+  try {
+    if (!userId) {
+      throw new Error('userId is required');
+    }
+    if (!productId) {
+      throw new Error('productId is required');
+    }
+    if (!days || days <= 0) {
+      throw new Error('days must be positive');
+    }
+
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+    startDate.setDate(endDate.getDate() - (days - 1));
+
+    const sales = await prisma.sales.findMany({
+      where: {
+        user_id: userId,
+        product_id: productId,
+        sale_date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      select: {
+        sale_date: true,
+        quantity: true,
+        products: { select: { name: true } },
+      },
+      orderBy: { sale_date: 'asc' },
+    });
+
+    const grouped = new Map<
+      string,
+      { date: Date; quantity: number; productName?: string }
+    >();
+
+    sales.forEach((row) => {
+      const key = row.sale_date.toISOString().split('T')[0];
+      const existing = grouped.get(key);
+      const qty = Number(row.quantity || 0);
+      if (existing) {
+        grouped.set(key, {
+          ...existing,
+          quantity: existing.quantity + qty,
+          productName: existing.productName || row.products?.name,
+        });
+      } else {
+        grouped.set(key, {
+          date: new Date(key),
+          quantity: qty,
+          productName: row.products?.name,
+        });
+      }
+    });
+
+    return Array.from(grouped.values()).sort(
+      (a, b) => a.date.getTime() - b.date.getTime(),
+    );
+  } catch (error) {
+    console.error('getSalesData failed', error);
+    throw error;
+  }
+}

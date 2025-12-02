@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select'; 
 import { Badge } from '@/components/ui/Badge';
+import { TrendChart } from '@/components/TrendChart';
 
 const UNIT_OPTIONS = [
   { value: 'pcs', label: 'Pcs' },
@@ -130,13 +131,17 @@ export default function ProductsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-5xl mx-auto space-y-8">
+      <div className="max-w-7xl mx-auto space-y-8">
         
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-900">Manajemen Produk</h1>
           <Badge variant="outline" className="text-sm px-3 py-1">
             Total: {products.length} Produk
           </Badge>
+        </div>
+
+        <div className="w-full">
+          <TrendChart />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -187,7 +192,7 @@ export default function ProductsPage() {
                 <p className="text-sm text-gray-400">Yuk tambah produk pertamamu di form sebelah kiri!</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {products.map((product) => (
                   <Card key={product.id} className="hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-primary">
                     <CardContent className="p-5 flex justify-between items-start">

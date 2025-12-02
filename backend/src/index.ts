@@ -3,6 +3,8 @@ import dotenv from 'dotenv'
 import cors from 'cors';
 import productRoutes from './routes/productRoutes';
 import salesRoutes from './routes/salesRoutes';
+import authRoutes from './routes/authRoutes';
+import intelligenceRoutes from './routes/intelligenceRoutes';
 import { optionalAuth } from '../lib/auth/middleware';
 
 dotenv.config()
@@ -20,8 +22,10 @@ app.use(cors({
 app.use(express.json());
 app.use(optionalAuth); 
 
+app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes); 
 app.use('/api/sales', salesRoutes);
+app.use('/api/intelligence', intelligenceRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ 

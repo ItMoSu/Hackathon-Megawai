@@ -1,6 +1,24 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../lib/database/schema'; 
 
+const allowedTrendRanges = new Set([7, 14, 30, 60, 90]);
+
+function toStartOfDay(date: Date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function toEndOfDay(date: Date) {
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
+function formatDate(date: Date) {
+  return date.toISOString().split('T')[0];
+}
+
 export const getProducts = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.sub;
@@ -56,5 +74,93 @@ export const createProduct = async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Gagal menyimpan produk" });
+  }
+};
+
+export const getProductTrend = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.sub;
+    const productId = typeof req.query.productId === 'string' ? req.query.productId : undefined;
+    const daysParam = Number(req.query.days);
+    const days = allowedTrendRanges.has(daysParam) ? daysParam : 30;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User tidak terotentikasi" });
+    }
+
+    if (!req.query.days) {
+      // still allow default but clarify to client
+      console.warn('days param tidak diberikan, default 30 digunakan');
+    }
+
+    const endDate = toEndOfDay(new Date());
+    const startDate = toStartOfDay(new Date());
+    startDate.setDate(endDate.getDate() - (days - 1));
+
+    let productName: string | undefined;
+
+    if (productId) {
+      const product = await prisma.products.findFirst({
+        where: { id: productId, user_id: String(userId) },
+        select: { id: true, name: true },
+      });
+
+      if (!product) {
+        return res.status(404).json({ error: "Produk tidak ditemukan" });
+      }
+
+      productName = product.name;
+    }
+
+    const sales = await prisma.sales.findMany({
+      where: {
+        user_id: String(userId),
+        ...(productId ? { product_id: productId } : {}),
+        sale_date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      select: {
+        sale_date: true,
+        quantity: true,
+        product_id: true,
+        products: { select: { name: true } },
+      },
+      orderBy: { sale_date: 'asc' },
+    });
+
+    const dateMap = new Map<string, number>();
+    const cursor = new Date(startDate);
+    while (cursor <= endDate) {
+      dateMap.set(formatDate(cursor), 0);
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    sales.forEach((sale) => {
+      const key = formatDate(new Date(sale.sale_date));
+      const prev = dateMap.get(key) ?? 0;
+      dateMap.set(key, prev + Number(sale.quantity || 0));
+    });
+
+    const series = Array.from(dateMap.entries()).map(([date, value]) => ({
+      date,
+      sales: value,
+    }));
+
+    const resolvedName = productId
+      ? productName ?? sales.find((s) => s.products?.name)?.products?.name ?? 'Produk'
+      : 'Semua Produk';
+
+    return res.json({
+      success: true,
+      data: {
+        productName: resolvedName,
+        data: series,
+      },
+    });
+  } catch (error) {
+    console.error('getProductTrend error:', error);
+    res.status(500).json({ error: "Gagal mengambil data trend" });
   }
 };

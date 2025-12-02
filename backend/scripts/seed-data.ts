@@ -12,7 +12,7 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY; 
 
 
-const PLACEHOLDER_USER_ID = '7e12bd6c-98d7-48fe-b788-48a877ea0a47'; 
+const PLACEHOLDER_USER_ID = 'dc16353b-b26e-48c7-a8c9-31f1e6ecb678'; 
 
 
 if (!supabaseUrl || !supabaseServiceKey) {
@@ -28,10 +28,10 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 // ID dataset yang akan kita buat di awal skrip
 const DATASET_ID_FOR_SEEDS = uuidv4(); 
 
-const FILE_TYPES = ['xlsx', 'csv', 'pdf', 'docx', 'txt'];
+const FILE_TYPES = ['xlsx', 'csv', 'pdf', 'docx'];
 
 
-const SALE_SOURCES = ['xlsx', 'csv', 'pdf', 'docx', 'txt']; 
+const SALE_SOURCES = ['xlsx', 'csv', 'pdf', 'docx']; 
 const DUMMY_FILE_NAME = 'initial_seed_data';
 const DUMMY_FILE_TYPE = FILE_TYPES[0];
 
