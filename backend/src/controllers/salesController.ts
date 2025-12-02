@@ -25,6 +25,13 @@ export const createSalesEntry = async (req: Request, res: Response) => {
     const saleDateObj = new Date(sale_date);
     const qtyNumber = Number(quantity);
 
+    if (qtyNumber < 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Quantity tidak boleh negatif" 
+      });
+    }
+    
     await bulkUpsertSales(userId, dataset_id, [{
       productName: product_name, 
       date: saleDateObj,
@@ -73,5 +80,22 @@ export const createSalesEntry = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Sales Controller Error:", error);
     res.status(500).json({ error: error instanceof Error ? error.message : "Server Error" });
+  }
+};
+
+export const getSalesData = async (req: Request, res: Response) => {
+  try {
+    const salesData = await prisma.sales.findMany({
+      orderBy: { sale_date: 'desc' },
+      take: 100
+    });
+
+    res.status(200).json({
+      success: true,
+      data: salesData
+    });
+  } catch (error) {
+    console.error("Error Get Sales:", error);
+    res.status(500).json({ error: "Gagal mengambil data sales" });
   }
 };
