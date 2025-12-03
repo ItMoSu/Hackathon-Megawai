@@ -41,7 +41,7 @@ export const createSalesEntry = async (req: Request, res: Response) => {
       productName: product_name, 
       date: saleDateObj,
       quantity: qtyNumber,
-      source: 'MANUAL_INPUT' 
+      source: 'manual' 
     }]);
 
     // 3. Cari Product ID (Hanya sekali saja!)
@@ -88,7 +88,7 @@ export const createSalesEntry = async (req: Request, res: Response) => {
                     {
                         actualQty: qtyNumber,
                         burstScore: aiResult.burst_score,
-                        burstLevel: aiResult.status,
+                        burstLevel: aiResult.status.split('(')[0].trim(), 
                         aiInsight: JSON.stringify(aiResult.recommendation)
                     }
                 );
