@@ -53,7 +53,7 @@ export default function DashboardPage() {
             <p className="text-sm font-semibold uppercase text-blue-600">Intelligence</p>
             <h1 className="text-3xl font-bold text-gray-900">AI Insights Dashboard</h1>
             <p className="text-sm text-gray-500">
-              Hybrid AI forecasts plus real-time burst detection untuk tiap produk.
+              Prediksi cerdas dan rekomendasi bisnis untuk UMKM, lengkap dengan deteksi lonjakan real-time.
             </p>
           </div>
           <Badge variant="secondary" className="text-xs">
@@ -61,8 +61,8 @@ export default function DashboardPage() {
           </Badge>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
-          <Card className="lg:col-span-1">
+        <div className="grid grid-cols-12 gap-6">
+          <Card className="col-span-12 md:col-span-4 lg:col-span-3">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-900">Produk</h3>
@@ -118,7 +118,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <div className="lg:col-span-3">
+          <div className="col-span-12 md:col-span-8 lg:col-span-9">
             {selectedId ? (
               <IntelligenceDashboard productId={selectedId} />
             ) : (

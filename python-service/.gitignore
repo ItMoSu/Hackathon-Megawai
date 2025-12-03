@@ -1,8 +1,48 @@
-models/*.pkl
-models/*_metadata.json
-logs/*.log
-logs/*.json
+﻿# Python
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
 *.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
 .env
+.venv
+env/
 venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Training Pipeline Artifacts (TOO BIG!)
+training/datasets/*
+!training/datasets/.gitkeep
+training/preprocessed/*
+!training/preprocessed/.gitkeep
+training/models_output/*.pkl
+training/logs/*.log
+
+# Keep metadata JSON (small, useful for demo)
+!training/models_output/*_metadata.json
+!training/models_output/.gitkeep
+
+# Root folders (if any)
+datasets/*
+!datasets/.gitkeep
+preprocessed/*
+!preprocessed/.gitkeep
+models_output/*
+!models_output/.gitkeep
+logs/*.log
