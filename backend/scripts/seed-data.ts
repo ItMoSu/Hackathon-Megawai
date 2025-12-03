@@ -14,7 +14,7 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 
 // UUID pengguna AKTIF dari tabel auth.users Supabase Anda. WAJIB!
-const PLACEHOLDER_USER_ID = 'dc16353b-b26e-48c7-a8c9-31f1e6ecb678'; // <--- INI BUAT USER ID INI PENTING YAA
+const PLACEHOLDER_USER_ID = '5a571f1e-3130-4438-8da0-ef691273a38c'; // <--- INI BUAT USER ID INI PENTING YAA
 // --- AKHIR PERHATIAN ---
 
 if (!supabaseUrl || !supabaseServiceKey) {
