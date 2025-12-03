@@ -1,0 +1,38 @@
+{
+  "product_id": "123a3b81-966d-4f32-a64c-85a30c6177d6",
+  "generated_at": "2025-12-04T01:19:50.113666",
+  "physics_metrics": {
+    "momentum": {
+      "momentum7": -0.3660040706039883,
+      "momentum14": 0.6850825418496922,
+      "momentum30": -0.1812298761966203,
+      "combined": -0.013723247986410572,
+      "combined_momentum": -0.013723247986410572,
+      "status": "STABLE"
+    },
+    "burst": {
+      "actual": 13.0,
+      "expected": 9.805382716049383,
+      "burst_score": 0.27790453840228857,
+      "level": "NORMAL",
+      "burst_type": "NORMAL",
+      "factors": {
+        "baseline": 9.7,
+        "dow": 0.8790123456790124,
+        "payday": 1.15
+      }
+    },
+    "priority_score": 0.018184180249741454
+  },
+  "recommendation": {
+    "type": "OPTIMIZE",
+    "priority": "LOW",
+    "message": "Penjualan stabil. Fokus pada efisiensi dan loyalitas pelanggan.",
+    "actions": [
+      "Optimalkan biaya operasional",
+      "Tingkatkan program loyalitas",
+      "Kumpulkan feedback pelanggan",
+      "Eksplorasi pasar baru"
+    ]
+  }
+}

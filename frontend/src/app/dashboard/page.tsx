@@ -5,6 +5,7 @@ import { IntelligenceDashboard } from "@/components/IntelligenceDashboard";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import Navbar from '@/components/ui/Navbar';
 
 type Product = { id: string; name: string; unit?: string };
 
@@ -47,6 +48,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
+      <Navbar />
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>

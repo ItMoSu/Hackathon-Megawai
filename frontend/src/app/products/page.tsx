@@ -56,16 +56,13 @@ export default function ProductsPage() {
           router.push('/login');
           return;
         }
-        // ------------------------
-
-        // Gunakan Backticks (`) bukan single quote (') agar variable ${userId} terbaca!
+        
         const res = await fetch(`http://localhost:5000/api/products?user_id=${userId}`, {
           headers: getAuthHeaders() 
         });
 
         if (res.status === 401) {
-          // Token expired atau tidak valid
-          localStorage.removeItem('token'); // Bersihkan token rusak
+          localStorage.removeItem('token'); 
           router.push('/login'); 
           return;
         }

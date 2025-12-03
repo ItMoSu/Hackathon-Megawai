@@ -1,0 +1,38 @@
+{
+  "product_id": "e196eb88-239b-4789-a43d-dbd442f0d1b0",
+  "generated_at": "2025-12-03T02:27:50.402581",
+  "physics_metrics": {
+    "momentum": {
+      "momentum7": 0.02328504119563877,
+      "momentum14": 0.16673564653004877,
+      "momentum30": -0.15286230064285233,
+      "combined": 0.031090754428263548,
+      "combined_momentum": 0.031090754428263548,
+      "status": "GROWING"
+    },
+    "burst": {
+      "actual": 4.0,
+      "expected": 11.575013819789934,
+      "burst_score": -0.44419930251956313,
+      "level": "NORMAL",
+      "burst_type": "NORMAL",
+      "factors": {
+        "baseline": 18.966666666666665,
+        "dow": 0.5306799336650082,
+        "payday": 1.15
+      }
+    },
+    "priority_score": 0.021763528099784483
+  },
+  "recommendation": {
+    "type": "MAINTAIN",
+    "priority": "MEDIUM",
+    "message": "Penjualan naik 3.1%. Pertahankan momentum.",
+    "actions": [
+      "Pertahankan kualitas produk",
+      "Jaga konsistensi stok",
+      "Tingkatkan engagement pelanggan",
+      "Siapkan kapasitas untuk pertumbuhan"
+    ]
+  }
+}
