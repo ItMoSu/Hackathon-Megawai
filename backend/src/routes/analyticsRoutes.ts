@@ -3,10 +3,12 @@ import { requireAuth } from '../../lib/auth/middleware';
 import { getSalesData } from '../../lib/database/queries';
 // Update import ke fungsi baru
 import { calculateMomentum } from '../../lib/analytics/momentum';
+import { triggerBurstAnalysis } from '../controllers/analyticsController';
 
 const router = express.Router();
 
 router.use(requireAuth);
+router.get('/burst', triggerBurstAnalysis);
 
 // GET /api/analytics/momentum?productId=...
 router.get('/momentum', async (req, res) => {

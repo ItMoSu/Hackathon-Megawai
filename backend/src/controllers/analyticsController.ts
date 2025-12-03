@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../lib/database/schema';
+import { generateBurstAnalytics } from '../services/burstService';
 
 export const getDashboardSummary = async (req: Request, res: Response) => {
 try {
@@ -89,4 +90,34 @@ try {
         console.error("Dashboard Error:", error);
         res.status(500).json({ error: "Gagal memuat dashboard" });
     }
+};
+
+export const triggerBurstAnalysis = async (req: Request, res: Response) => {
+try {
+    const rawUserId = req.user?.id;
+
+    if (typeof rawUserId !== 'string') {
+        return res.status(401).json({ error: 'User not authenticated correctly' });
+    }
+    
+    const userId = rawUserId;   
+    const { date } = req.query; 
+
+    if (!date) {
+        return res.status(400).json({ error: 'Date is required (YYYY-MM-DD)' });
+    }
+
+    const targetDate = new Date(date as string);
+    
+    const result = await generateBurstAnalytics(userId, targetDate);
+
+    res.status(200).json({
+    success: true,
+    message: 'Burst analysis completed',
+    data: result
+    });
+} catch (error) {
+    console.error('Burst Analysis Error:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+}
 };
