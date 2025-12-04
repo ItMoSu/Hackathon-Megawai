@@ -409,6 +409,9 @@ export async function testDbConnection(): Promise<void> {
   await prisma.$queryRaw`SELECT 1`
 }
 
+/**
+ * ✅ UPDATED: Upsert analytics result with enhanced ML data support
+ */
 export async function upsertAnalyticsResult(
   userId: string,
   datasetId: string | null,
@@ -416,36 +419,51 @@ export async function upsertAnalyticsResult(
   date: Date,
   data: {
     actualQty: number;
-    burstScore: number;
-    burstLevel: string;
-    aiInsight: string; 
+    burstScore?: number;
+    burstLevel?: string;
+    momentumCombined?: number;
+    momentumLabel?: string;
+    priorityScore?: number;
+    aiInsight?: any; // Can be string or object
   }
 ) {
   try {
     if (!userId) throw new Error('userId is required');
+    if (!productId) throw new Error('productId is required');
+
+    // Normalize date to midnight
+    const normalizedDate = new Date(date);
+    normalizedDate.setHours(0, 0, 0, 0);
 
     return await prisma.daily_analytics.upsert({
       where: {
         product_id_metric_date: {
           product_id: productId,
-          metric_date: date,
+          metric_date: normalizedDate,
         },
       },
       create: {
         user_id: userId,
         dataset_id: datasetId,
         product_id: productId,
-        metric_date: date,
+        metric_date: normalizedDate,
         actual_quantity: data.actualQty,
-        burst_score: data.burstScore,
-        burst_level: data.burstLevel,
-        ai_insight: data.aiInsight, 
+        burst_score: data.burstScore ?? null,
+        burst_level: data.burstLevel ?? null,
+        momentum_combined: data.momentumCombined ?? null,
+        momentum_label: data.momentumLabel ?? null,
+        priority_score: data.priorityScore ?? null,
+        ai_insight: data.aiInsight ?? null,
       },
       update: {
         actual_quantity: data.actualQty,
-        burst_score: data.burstScore,
-        burst_level: data.burstLevel,
-        ai_insight: data.aiInsight,
+        burst_score: data.burstScore ?? undefined,
+        burst_level: data.burstLevel ?? undefined,
+        momentum_combined: data.momentumCombined ?? undefined,
+        momentum_label: data.momentumLabel ?? undefined,
+        priority_score: data.priorityScore ?? undefined,
+        ai_insight: data.aiInsight ?? undefined,
+        updated_at: new Date(),
       },
     });
   } catch (error) {
@@ -495,10 +513,7 @@ export async function getSalesData(
       orderBy: { sale_date: 'asc' },
     });
 
-    const grouped = new Map<
-      string,
-      { date: Date; quantity: number; productName?: string }
-    >();
+    const grouped = new Map<string, { date: Date; quantity: number; productName?: string }>();
 
     sales.forEach((row) => {
       const key = row.sale_date.toISOString().split('T')[0];
@@ -524,6 +539,269 @@ export async function getSalesData(
     );
   } catch (error) {
     console.error('getSalesData failed', error);
+    throw error;
+  }
+}
+
+/**
+ * ✅ NEW: Get latest analytics for a product
+ */
+export async function getLatestAnalytics(
+  userId: string,
+  productId: string
+): Promise<DailyAnalytics | null> {
+  try {
+    if (!userId) throw new Error('userId is required');
+    if (!productId) throw new Error('productId is required');
+
+    return await prisma.daily_analytics.findFirst({
+      where: {
+        user_id: userId,
+        product_id: productId,
+      },
+      orderBy: {
+        metric_date: 'desc',
+      },
+      include: {
+        products: true,
+      },
+    });
+  } catch (error) {
+    console.error('getLatestAnalytics failed', error);
+    throw error;
+  }
+}
+
+/**
+ * ✅ NEW: Get top products by priority score
+ */
+export async function getTopProductsByPriority(
+  userId: string,
+  limit: number = 10,
+  datasetId?: string | null
+): Promise<DailyAnalytics[]> {
+  try {
+    if (!userId) throw new Error('userId is required');
+
+    const where: any = {
+      user_id: userId,
+      priority_score: {
+        not: null,
+      },
+    };
+
+    if (datasetId) {
+      where.dataset_id = datasetId;
+    }
+
+    // Get latest analytics for each product
+    const latestDates = await prisma.daily_analytics.groupBy({
+      by: ['product_id'],
+      where,
+      _max: {
+        metric_date: true,
+      },
+    });
+
+    const latestDateFilters = latestDates
+      .map(item => ({
+        product_id: item.product_id,
+        metric_date: item._max.metric_date,
+      }))
+      .filter(
+        (item): item is { product_id: string; metric_date: Date } =>
+          item.metric_date !== null,
+      );
+
+    if (!latestDateFilters.length) {
+      return [];
+    }
+
+    // Get analytics for those dates
+    const analytics = await prisma.daily_analytics.findMany({
+      where: {
+        user_id: userId,
+        OR: latestDateFilters,
+      },
+      include: {
+        products: true,
+      },
+      orderBy: {
+        priority_score: 'desc',
+      },
+      take: limit,
+    });
+
+    return analytics;
+  } catch (error) {
+    console.error('getTopProductsByPriority failed', error);
+    throw error;
+  }
+}
+
+/**
+ * ✅ NEW: Get products with burst alerts
+ */
+export async function getProductsWithBurstAlerts(
+  userId: string,
+  minBurstLevel: string = 'HIGH',
+  datasetId?: string | null
+): Promise<DailyAnalytics[]> {
+  try {
+    if (!userId) throw new Error('userId is required');
+
+    const where: any = {
+      user_id: userId,
+      burst_level: {
+        in: minBurstLevel === 'HIGH' 
+          ? ['HIGH', 'CRITICAL'] 
+          : ['MEDIUM', 'HIGH', 'CRITICAL'],
+      },
+    };
+
+    if (datasetId) {
+      where.dataset_id = datasetId;
+    }
+
+    // Get latest date for each product with burst
+    const latestDates = await prisma.daily_analytics.groupBy({
+      by: ['product_id'],
+      where,
+      _max: {
+        metric_date: true,
+      },
+    });
+
+    const latestDateFilters = latestDates
+      .map(item => ({
+        product_id: item.product_id,
+        metric_date: item._max.metric_date,
+      }))
+      .filter(
+        (item): item is { product_id: string; metric_date: Date } =>
+          item.metric_date !== null,
+      );
+
+    if (!latestDateFilters.length) {
+      return [];
+    }
+
+    // Get analytics for those dates
+    const analytics = await prisma.daily_analytics.findMany({
+      where: {
+        user_id: userId,
+        OR: latestDateFilters,
+      },
+      include: {
+        products: true,
+      },
+      orderBy: {
+        burst_score: 'desc',
+      },
+    });
+
+    return analytics;
+  } catch (error) {
+    console.error('getProductsWithBurstAlerts failed', error);
+    throw error;
+  }
+}
+
+/**
+ * ✅ NEW: Bulk upsert daily analytics (for ML batch updates)
+ */
+export async function bulkUpsertDailyAnalytics(
+  userId: string,
+  analytics: Array<{
+    productId: string;
+    date: Date;
+    datasetId?: string | null;
+    actualQty?: number;
+    burstScore?: number;
+    burstLevel?: string;
+    momentumCombined?: number;
+    momentumLabel?: string;
+    priorityScore?: number;
+    aiInsight?: any;
+  }>
+): Promise<void> {
+  try {
+    if (!userId) throw new Error('userId is required');
+    if (!Array.isArray(analytics) || analytics.length === 0) {
+      return;
+    }
+
+    await prisma.$transaction(
+      analytics.map(item => {
+        const normalizedDate = new Date(item.date);
+        normalizedDate.setHours(0, 0, 0, 0);
+
+        return prisma.daily_analytics.upsert({
+          where: {
+            product_id_metric_date: {
+              product_id: item.productId,
+              metric_date: normalizedDate,
+            },
+          },
+          create: {
+            user_id: userId,
+            dataset_id: item.datasetId ?? null,
+            product_id: item.productId,
+            metric_date: normalizedDate,
+            actual_quantity: item.actualQty ?? 0,
+            burst_score: item.burstScore ?? null,
+            burst_level: item.burstLevel ?? null,
+            momentum_combined: item.momentumCombined ?? null,
+            momentum_label: item.momentumLabel ?? null,
+            priority_score: item.priorityScore ?? null,
+            ai_insight: item.aiInsight ?? null,
+          },
+          update: {
+            actual_quantity: item.actualQty ?? undefined,
+            burst_score: item.burstScore ?? undefined,
+            burst_level: item.burstLevel ?? undefined,
+            momentum_combined: item.momentumCombined ?? undefined,
+            momentum_label: item.momentumLabel ?? undefined,
+            priority_score: item.priorityScore ?? undefined,
+            ai_insight: item.aiInsight ?? undefined,
+            updated_at: new Date(),
+          },
+        });
+      })
+    );
+  } catch (error) {
+    console.error('bulkUpsertDailyAnalytics failed', error);
+    throw error;
+  }
+}
+
+/**
+ * ✅ NEW: Get products list for user (for ML processing)
+ */
+export async function getUserProducts(
+  userId: string,
+  datasetId?: string | null
+): Promise<Product[]> {
+  try {
+    if (!userId) throw new Error('userId is required');
+
+    const where: any = {
+      user_id: userId,
+      is_active: true,
+    };
+
+    if (datasetId) {
+      where.dataset_id = datasetId;
+    }
+
+    return await prisma.products.findMany({
+      where,
+      orderBy: {
+        name: 'asc',
+      },
+    });
+  } catch (error) {
+    console.error('getUserProducts failed', error);
     throw error;
   }
 }

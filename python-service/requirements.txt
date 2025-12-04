@@ -3,6 +3,7 @@ pandas>=2.0.0
 numpy>=1.24.0,<2.0           # Pin <2.0 to stay compatible with TF 2.15 environments
 scikit-learn>=1.3.0
 xgboost>=1.7.0
+joblib>=1.3.0
 
 # File processing
 openpyxl>=3.1.0              # Excel (xlsx)
@@ -11,7 +12,13 @@ tabula-py>=2.9.0             # PDF tables (requires Java + JPype1)
 JPype1>=1.5.0
 python-docx>=1.1.0           # DOCX tables
 
+# Visualization
+matplotlib>=3.8.0
+
 # API server
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
+
+# API client/testing
+requests>=2.31.0

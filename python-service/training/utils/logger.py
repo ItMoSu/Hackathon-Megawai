@@ -50,7 +50,9 @@ class Logger:
         console_handler.setFormatter(console_format)
 
         # File handler
-        file_handler = logging.FileHandler('logs/training.log', encoding='utf-8')
+        log_path = Path('logs') / 'training.log'
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        file_handler = logging.FileHandler(log_path, encoding='utf-8')
         file_handler.setLevel(logging.DEBUG)
         file_format = logging.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s'

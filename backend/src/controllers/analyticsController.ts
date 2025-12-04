@@ -1,123 +1,249 @@
 import { Request, Response } from 'express';
+import { intelligenceService } from '../services/intelligenceService';
 import { prisma } from '../../lib/database/schema';
-import { generateBurstAnalytics } from '../services/burstService';
+import { getSalesData } from '../../lib/database/queries';
 
-export const getDashboardSummary = async (req: Request, res: Response) => {
-try {
-    const userId = req.user?.sub;
+export class AnalyticsController {
+  
+  /**
+   * GET /api/analytics/products/:productId/forecast
+   * Get ML forecast for a specific product
+   */
+  static async getProductForecast(req: Request, res: Response) {
+    try {
+      const { productId } = req.params;
+      const days = parseInt(req.query.days as string) || 7;
+      const userId = req.user?.sub;
 
-    if (!userId) {
-    return res.status(401).json({ error: "Unauthorized" });
-    }
-
-    const userDataset = await prisma.datasets.findFirst({
-        where: { user_id: userId }
-    });
-
-    if (!userDataset) {
-        return res.status(200).json({ 
-            total_qty: 0,
-            total_revenue: 0,
-            top_products: [] 
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'User tidak terotentikasi'
         });
-    }
+      }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); 
-    
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1); 
-
-    const summary = await prisma.sales.aggregate({
-    _sum: {
-        quantity: true,
-        revenue: true, 
-    },
-    where: {
-        dataset_id: userDataset.id,
-        sale_date: {
-        gte: today,
-        lt: tomorrow,
-        },
-    },
-    });
-
-    // 4. Query Top Products Hari Ini (Group By Product)
-    const productStats = await prisma.sales.groupBy({
-    by: ['product_id'],
-    _sum: {
-        quantity: true,
-    },
-    where: {
-        dataset_id: userDataset.id,
-        sale_date: {
-        gte: today,
-        lt: tomorrow,
-        },
-    },
-    orderBy: {
-        _sum: {
-        quantity: 'desc',
-        },
-    },
-    take: 5, 
-    });
-
-    // 5. Ambil Nama Produk
-    const topProducts = await Promise.all(productStats.map(async (item) => {
-        if (!item.product_id) return null;
-        const product = await prisma.products.findUnique({
-            where: { id: item.product_id }
-        });
-        
-        return {
-            name: product?.name || "Unknown Product",
-            quantity: Number(item._sum.quantity) || 0
-        };
-        }));
-
-        const validTopProducts = topProducts.filter(p => p !== null);
-        res.json({
-        success: true,
-        data: {
-            total_qty: Number(summary._sum.quantity) || 0,
-            total_revenue: Number(summary._sum.revenue) || 0,
-            top_products: validTopProducts
+      // Get product from database
+      const product = await prisma.products.findFirst({
+        where: { 
+          id: productId,
+          user_id: userId // Ensure user owns this product
         }
+      });
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          error: 'Product tidak ditemukan'
         });
+      }
 
-    } catch (error) {
-        console.error("Dashboard Error:", error);
-        res.status(500).json({ error: "Gagal memuat dashboard" });
+      // Get sales history
+      const salesHistory = await getSalesData(userId, productId, 60); // Last 60 days
+
+      // Analyze with ML service
+      const analysis = await intelligenceService.analyzeProduct(
+        product.id,
+        product.name,
+        salesHistory
+      );
+
+      res.json({
+        success: true,
+        product: {
+          id: product.id,
+          name: product.name,
+          unit: product.unit,
+          price: product.price
+        },
+        ...analysis
+      });
+      
+    } catch (error: any) {
+      console.error('[AnalyticsController] Forecast error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Gagal mendapatkan forecast'
+      });
     }
-};
+  }
+  
+  /**
+   * GET /api/analytics/reports/weekly
+   * Get weekly analytics report with ML rankings
+   */
+  static async getWeeklyReport(req: Request, res: Response) {
+    try {
+      const topN = parseInt(req.query.top_n as string) || 10;
+      const userId = req.user?.sub;
 
-export const triggerBurstAnalysis = async (req: Request, res: Response) => {
-try {
-    const rawUserId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'User tidak terotentikasi'
+        });
+      }
 
-    if (typeof rawUserId !== 'string') {
-        return res.status(401).json({ error: 'User not authenticated correctly' });
+      // Get weekly report from ML service
+      const report = await intelligenceService.getWeeklyReport(userId, topN);
+      
+      res.json({
+        success: true,
+        ...report
+      });
+      
+    } catch (error: any) {
+      console.error('[AnalyticsController] Weekly report error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Gagal mendapatkan weekly report'
+      });
     }
-    
-    const userId = rawUserId;   
-    const { date } = req.query; 
+  }
+  
+  /**
+   * GET /api/analytics/products/ranking
+   * Get product ranking based on ML priority scores
+   */
+  static async getProductRanking(req: Request, res: Response) {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const userId = req.user?.sub;
 
-    if (!date) {
-        return res.status(400).json({ error: 'Date is required (YYYY-MM-DD)' });
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'User tidak terotentikasi'
+        });
+      }
+
+      // Get weekly report (contains rankings)
+      const report = await intelligenceService.getWeeklyReport(userId, limit);
+      
+      res.json({
+        success: true,
+        rankings: report.topPerformers || [],
+        summary: report.summary,
+        generatedAt: report.generatedAt
+      });
+      
+    } catch (error: any) {
+      console.error('[AnalyticsController] Ranking error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Gagal mendapatkan ranking'
+      });
     }
+  }
 
-    const targetDate = new Date(date as string);
-    
-    const result = await generateBurstAnalytics(userId, targetDate);
+  /**
+   * GET /api/analytics/products/:productId/insights
+   * Get AI insights for a specific product
+   */
+  static async getProductInsights(req: Request, res: Response) {
+    try {
+      const { productId } = req.params;
+      const userId = req.user?.sub;
 
-    res.status(200).json({
-    success: true,
-    message: 'Burst analysis completed',
-    data: result
-    });
-} catch (error) {
-    console.error('Burst Analysis Error:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'User tidak terotentikasi'
+        });
+      }
+
+      // Get product
+      const product = await prisma.products.findFirst({
+        where: { 
+          id: productId,
+          user_id: userId
+        }
+      });
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          error: 'Product tidak ditemukan'
+        });
+      }
+
+      // Get latest daily analytics
+      const analytics = await prisma.daily_analytics.findFirst({
+        where: { product_id: productId },
+        orderBy: { metric_date: 'desc' }
+      });
+
+      if (!analytics) {
+        return res.status(404).json({
+          success: false,
+          error: 'Analytics belum tersedia'
+        });
+      }
+
+      res.json({
+        success: true,
+        product: {
+          id: product.id,
+          name: product.name
+        },
+        insights: {
+          momentum: {
+            combined: Number(analytics.momentum_combined || 0),
+            status: analytics.momentum_label || 'UNKNOWN'
+          },
+          burst: {
+            score: Number(analytics.burst_score || 0),
+            level: analytics.burst_level || 'NORMAL',
+            type: analytics.burst_type || 'NORMAL'
+          },
+          priority: {
+            score: Number(analytics.priority_score || 0),
+            rank: analytics.priority_rank || null
+          },
+          ai_insight: analytics.ai_insight || null
+        },
+        lastUpdated: analytics.updated_at
+      });
+
+    } catch (error: any) {
+      console.error('[AnalyticsController] Insights error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Gagal mendapatkan insights'
+      });
+    }
+  }
+
+  /**
+   * GET /api/analytics/trending
+   * Get trending products (burst alerts)
+   */
+  static async getTrendingProducts(req: Request, res: Response) {
+    try {
+      const userId = req.user?.sub;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'User tidak terotentikasi'
+        });
+      }
+
+      // Get trending from intelligence service
+      const trending = await intelligenceService.getTrendingProducts(userId);
+
+      res.json({
+        success: true,
+        trending: trending.topPerformers || [],
+        count: trending.topPerformers?.length || 0,
+        generatedAt: trending.generatedAt
+      });
+
+    } catch (error: any) {
+      console.error('[AnalyticsController] Trending error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Gagal mendapatkan trending products'
+      });
+    }
+  }
 }
-};

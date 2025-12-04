@@ -11,7 +11,7 @@ import os
 sys.path.insert(0, os.path.dirname(__file__))
 
 from services import PreprocessingService, TrainingService, ConsoleProgressObserver
-from config import PREPROCESSING_CONFIG, TRAINING_CONFIG
+from training_config import PREPROCESSING_CONFIG, TRAINING_CONFIG
 from utils.logger import logger
 
 

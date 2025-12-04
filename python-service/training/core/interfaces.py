@@ -75,6 +75,11 @@ class IColumnDetector(ABC):
         '''Auto-detect product name column'''
         pass
 
+    @abstractmethod
+    def detect_price_column(self, df: pd.DataFrame) -> Optional[str]:
+        '''Auto-detect price/amount column'''
+        pass
+
 
 class IDataCleaner(ABC):
     '''
@@ -89,6 +94,11 @@ class IDataCleaner(ABC):
     @abstractmethod
     def clean_quantity(self, quantity_val) -> Optional[float]:
         '''Clean and validate quantity value'''
+        pass
+
+    @abstractmethod
+    def clean_price_to_idr(self, price_val) -> Optional[float]:
+        '''Clean price value and convert to IDR'''
         pass
 
     @abstractmethod

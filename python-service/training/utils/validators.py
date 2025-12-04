@@ -4,6 +4,7 @@ Implements IDataValidator interface
 '''
 
 from typing import List, Dict
+import re
 import pandas as pd
 from core.interfaces import IDataValidator, IColumnDetector, IDataCleaner
 from core.exceptions import DataValidationError
@@ -94,7 +95,8 @@ class ColumnDetector(IColumnDetector):
     '''Detects date, quantity, and product columns'''
 
     DATE_KEYWORDS = ['date', 'tanggal', 'tgl', 'waktu', 'time', 'datetime']
-    QUANTITY_KEYWORDS = ['quantity', 'qty', 'jumlah', 'sales', 'penjualan', 'amount', 'total', 'sold']
+    QUANTITY_KEYWORDS = ['quantity', 'qty', 'jumlah', 'sales', 'penjualan', 'sold', 'units']
+    PRICE_KEYWORDS = ['price', 'harga', 'unit_price', 'item_price', 'amount', 'total_amount', 'transaction_amount', 'money']
     PRODUCT_KEYWORDS = ['product', 'produk', 'item', 'nama', 'name', 'barang', 'article', 'desc', 'description']
 
     def detect_date_column(self, df: pd.DataFrame) -> str | None:
@@ -128,16 +130,38 @@ class ColumnDetector(IColumnDetector):
                 return col
         return None
 
+    def detect_price_column(self, df: pd.DataFrame) -> str | None:
+        '''Auto-detect price/amount column'''
+        for col in df.columns:
+            col_lower = str(col).lower().strip()
+            if any(keyword in col_lower for keyword in self.PRICE_KEYWORDS):
+                # We don't block on numeric parse here; downstream will handle parsing
+                return col
+        return None
+
 
 class DataCleaner(IDataCleaner):
     '''Cleans and standardizes data'''
 
-    def __init__(self, date_formats: List[str] = None):
+    def __init__(self, date_formats: List[str] = None, currency_rates: Dict[str, float] | None = None):
         from datetime import datetime  # noqa: F401
         self.date_formats = date_formats or [
             '%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y',
             '%Y/%m/%d', '%d-%m-%Y', '%Y%m%d'
         ]
+        # Basic currency map; treat unknown currency as IDR (rate=1)
+        self.currency_rates = {
+            'IDR': 1.0,
+            'RP': 1.0,
+            'EUR': 17000.0,
+            '€': 17000.0,
+            '?': 17000.0,  # fallback for euro glyph read as '?'
+            'USD': 15500.0,
+            '$': 15500.0,
+            'SGD': 11500.0,
+        }
+        if currency_rates:
+            self.currency_rates.update(currency_rates)
 
     def clean_date(self, date_str: str) -> str | None:
         '''Clean and standardize date to YYYY-MM-DD'''
@@ -166,6 +190,57 @@ class DataCleaner(IDataCleaner):
             return qty
         except Exception:
             return None
+
+    def clean_price_to_idr(self, price_val) -> float | None:
+        '''Parse price, detect currency, and convert to IDR'''
+        if pd.isna(price_val):
+            return None
+
+        text = str(price_val).strip()
+        if not text:
+            return None
+
+        currency = self._detect_currency(text)
+        amount = self._parse_numeric_amount(text)
+        if amount is None:
+            return None
+
+        rate = self.currency_rates.get(currency, 1.0)
+        return round(amount * rate, 2)
+
+    def _detect_currency(self, text: str) -> str:
+        lower = text.lower()
+        if 'rp' in lower or 'idr' in lower:
+            return 'IDR'
+        if 'usd' in lower or '$' in text:
+            return 'USD'
+        if 'eur' in lower or '€' in text or '?' in text:
+            return 'EUR'
+        if 'sgd' in lower:
+            return 'SGD'
+        return 'IDR'
+
+    def _parse_numeric_amount(self, text: str) -> float | None:
+        # Strip obvious currency tokens
+        cleaned = text.replace('Rp', '').replace('rp', '')
+        cleaned = cleaned.replace('€', '').replace('$', '').replace('idr', '').replace('IDR', '')
+        # Capture first number-ish token
+        match = re.findall(r'[0-9][0-9.,]*', cleaned)
+        if not match:
+            return None
+        candidate = match[0]
+        # If there's exactly one comma and no dot, treat comma as decimal separator
+        if candidate.count(',') == 1 and candidate.count('.') == 0:
+            candidate = candidate.replace(',', '.')
+        else:
+            candidate = candidate.replace(',', '')
+        try:
+            return float(candidate)
+        except Exception:
+            try:
+                return float(pd.to_numeric(candidate, errors='coerce'))
+            except Exception:
+                return None
 
     def remove_outliers(self, df: pd.DataFrame, std_threshold: float = 3.0) -> pd.DataFrame:
         '''Remove outliers using Z-score method'''

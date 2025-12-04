@@ -1,11 +1,20 @@
-import express from 'express';
-import { createSalesEntry } from '../controllers/salesController';
-import { requireAuth } from '../../lib/auth/middleware';
+// backend/src/routes/salesRoutes.ts
+import { Router } from 'express';
+import { 
+  createSalesEntry, 
+  getSalesData, 
+  getSalesById, 
+  deleteSales 
+} from '../controllers/salesController';
+import { authenticateToken } from '../middleware/authMiddleware';
 
-const router = express.Router();
+const router = Router();
 
-router.use(requireAuth);
+router.use(authenticateToken);
 
-router.post('/', createSalesEntry); 
+router.post('/', createSalesEntry);
+router.get('/', getSalesData);
+router.get('/:id', getSalesById);
+router.delete('/:id', deleteSales);
 
 export default router;

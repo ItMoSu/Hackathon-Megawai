@@ -1,117 +1,127 @@
 """
-Ensemble Predictor - Combines ML + Rules
+Ensemble Predictor - Combines ML model with realtime data
 """
 
-import json
-import os
 from typing import Dict, List, Optional
+import logging
+from datetime import datetime, timedelta
+import os
 
-from .xgboost_optimal import forecaster
+from models.xgboost_optimal import HybridBrain
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+logger = logging.getLogger(__name__)
 
 
 class EnsemblePredictor:
-    """Combines ML predictions with real-time rule-based analysis"""
+    """
+    Ensemble predictor that combines:
+    1. Pre-trained ML model
+    2. Realtime data adjustments
+    3. Rule-based fallbacks
+    """
 
     def __init__(self):
-        self.forecaster = forecaster
+        self.models_cache: Dict[str, HybridBrain] = {}
 
-    def predict(self, product_id: str, realtime_data: Dict, days: int = 7) -> Dict:
+    def predict(
+        self,
+        product_id: str,
+        realtime_data: Dict,
+        days: int = 7
+    ) -> Dict:
         """
-        Generate hybrid prediction
-
+        Generate ensemble prediction with realtime data
+        
         Args:
             product_id: Product identifier
-            realtime_data: Real-time metrics (momentum, burst, etc.)
+            realtime_data: Recent sales data
             days: Number of days to forecast
-
+        
         Returns:
-            Combined prediction with recommendations
+            Prediction results with metadata
         """
         try:
-            model_path = self._find_model_path(product_id)
-            if not model_path:
+            # Load or get cached model
+            brain = self._get_model(product_id)
+            
+            if not brain:
                 return {
                     'success': False,
                     'error': f'Model not found for product: {product_id}'
                 }
 
-            if not self.forecaster.load_model(product_id, model_path):
-                return {
-                    'success': False,
-                    'error': f'Failed to load model for product: {product_id}'
-                }
+            # Get base prediction
+            predictions = brain.predict_next_days(days)
 
-            ml_predictions = self.forecaster.predict(product_id, days)
-
-            metadata_path = model_path.replace('.pkl', '_metadata.json')
-            physics_metrics: Dict = {}
-            recommendation: Dict = {}
-
-            if os.path.exists(metadata_path):
-                with open(metadata_path, 'r', encoding='utf-8') as f:
-                    metadata = json.load(f)
-                    physics_metrics = metadata.get('physics_metrics', {})
-                    recommendation = metadata.get('recommendation', {})
-
-            if realtime_data:
-                if 'momentum' in realtime_data:
-                    physics_metrics['momentum'] = realtime_data['momentum']
-                if 'burst' in realtime_data:
-                    physics_metrics['burst'] = realtime_data['burst']
-
-            peak_info = self._detect_peak(ml_predictions)
+            # Apply realtime adjustments if provided
+            if realtime_data and 'recent_sales' in realtime_data:
+                predictions = self._apply_realtime_adjustment(
+                    predictions,
+                    realtime_data['recent_sales']
+                )
 
             return {
                 'success': True,
                 'product_id': product_id,
-                'predictions': ml_predictions,
-                'physics_metrics': physics_metrics,
-                'recommendation': recommendation,
-                'peak_info': peak_info
+                'predictions': predictions,
+                'method': 'ENSEMBLE',
+                'realtime_adjusted': bool(realtime_data),
+                'recommendation': brain.get_recommendation()
             }
 
         except Exception as e:
+            logger.error(f"Ensemble prediction failed for {product_id}: {e}")
             return {
                 'success': False,
                 'error': str(e)
             }
 
-    def _find_model_path(self, product_id: str) -> Optional[str]:
-        candidates = [
-            os.path.join(BASE_DIR, "training", "models_output", f"xgboost_{product_id}.pkl"),
-            os.path.join(BASE_DIR, "models", f"xgboost_{product_id}.pkl"),
+    def _get_model(self, product_id: str) -> Optional[HybridBrain]:
+        """Load model from cache or disk"""
+        
+        # Check cache
+        if product_id in self.models_cache:
+            return self.models_cache[product_id]
+
+        # Try to load from disk
+        model_paths = [
+            f"training/models_output/xgboost_{product_id}.pkl",
+            f"models/artifacts/xgboost_{product_id}.pkl"
         ]
-        for path in candidates:
+
+        for path in model_paths:
             if os.path.exists(path):
-                return path
-        return None
-
-    def _detect_peak(self, predictions: List[Dict]) -> Optional[Dict]:
-        """Detect peak in forecast for 2-phase strategy"""
-        if not predictions or len(predictions) < 3:
-            return None
-
-        max_idx = 0
-        max_val = predictions[0]['predicted_quantity']
-
-        for i, pred in enumerate(predictions):
-            if pred['predicted_quantity'] > max_val:
-                max_val = pred['predicted_quantity']
-                max_idx = i
-
-        if max_idx < len(predictions) - 2:
-            post_peak_avg = sum(p['predicted_quantity'] for p in predictions[max_idx + 1:]) / (len(predictions) - max_idx - 1)
-            decline_pct = (max_val - post_peak_avg) / max_val if max_val > 0 else 0
-
-            if decline_pct > 0.25:
-                return {
-                    'has_peak': True,
-                    'peak_day': max_idx + 1,
-                    'peak_date': predictions[max_idx]['date'],
-                    'peak_value': max_val,
-                    'decline_percentage': decline_pct * 100
-                }
+                brain = HybridBrain(product_id)
+                if brain.load_model(product_id, path):
+                    self.models_cache[product_id] = brain
+                    return brain
 
         return None
+
+    def _apply_realtime_adjustment(
+        self,
+        predictions: List[Dict],
+        recent_sales: List[float]
+    ) -> List[Dict]:
+        """Adjust predictions based on recent sales trend"""
+        
+        if not recent_sales or len(recent_sales) < 3:
+            return predictions
+
+        # Calculate recent trend
+        recent_avg = sum(recent_sales[-3:]) / 3
+        historical_avg = sum(recent_sales) / len(recent_sales)
+        
+        if historical_avg > 0:
+            adjustment_factor = recent_avg / historical_avg
+            # Limit adjustment to ±20%
+            adjustment_factor = max(0.8, min(1.2, adjustment_factor))
+
+            # Apply adjustment
+            for pred in predictions:
+                pred['predicted_quantity'] *= adjustment_factor
+                pred['lower_bound'] *= adjustment_factor
+                pred['upper_bound'] *= adjustment_factor
+                pred['realtime_adjusted'] = True
+
+        return predictions

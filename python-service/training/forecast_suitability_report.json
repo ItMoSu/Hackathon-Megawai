@@ -1,0 +1,1321 @@
+{
+  "generated_at": "2025-12-04T10:33:49.775034",
+  "total_products": 168,
+  "high_confidence": {
+    "count": 27,
+    "percentage": 16.1,
+    "products": [
+      {
+        "product": "bakery_sales_idr_processed_BOULE_400G",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_BOULE_400G_cleaned.csv",
+        "cv": 0.504,
+        "gaps": 18.7,
+        "mean": 4.12
+      },
+      {
+        "product": "bakery_sales_idr_processed_CEREAL_BAGUETTE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_CEREAL_BAGUETTE_cleaned.csv",
+        "cv": 0.523,
+        "gaps": 16.8,
+        "mean": 6.44
+      },
+      {
+        "product": "bakery_sales_idr_processed_Roti_Cokelat_Lapisan",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_Roti_Cokelat_Lapisan_cleaned.csv",
+        "cv": 0.437,
+        "gaps": 16.0,
+        "mean": 20.88
+      },
+      {
+        "product": "bakery_sales_idr_processed_Roti_Desa_Klasik",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_Roti_Desa_Klasik_cleaned.csv",
+        "cv": 0.497,
+        "gaps": 17.8,
+        "mean": 3.52
+      },
+      {
+        "product": "bakery_sales_idr_processed_Roti_Oval_Kecil",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_Roti_Oval_Kecil_cleaned.csv",
+        "cv": 0.295,
+        "gaps": 15.7,
+        "mean": 19.33
+      },
+      {
+        "product": "bakery_sales_idr_processed_Roti_Potong",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_Roti_Potong_cleaned.csv",
+        "cv": 0.257,
+        "gaps": 16.1,
+        "mean": 19.2
+      },
+      {
+        "product": "bakery_sales_idr_processed_Roti_Sabit_Mentega",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_Roti_Sabit_Mentega_cleaned.csv",
+        "cv": 0.497,
+        "gaps": 15.7,
+        "mean": 23.44
+      },
+      {
+        "product": "bakery_sales_idr_processed_Roti_Stik_Jadul",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_Roti_Stik_Jadul_cleaned.csv",
+        "cv": 0.2,
+        "gaps": 15.7,
+        "mean": 95.12
+      },
+      {
+        "product": "bakery_sales_idr_processed_Roti_Stik_Prancis",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_Roti_Stik_Prancis_cleaned.csv",
+        "cv": 0.304,
+        "gaps": 15.7,
+        "mean": 18.98
+      },
+      {
+        "product": "bakery_sales_idr_processed_SPECIAL_BREAD",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_SPECIAL_BREAD_cleaned.csv",
+        "cv": 0.408,
+        "gaps": 16.5,
+        "mean": 4.69
+      },
+      {
+        "product": "sampled_random_200_per_day_BAGUETTE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_BAGUETTE_cleaned.csv",
+        "cv": 0.304,
+        "gaps": 6.4,
+        "mean": 18.9
+      },
+      {
+        "product": "sampled_random_200_per_day_BANETTE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_BANETTE_cleaned.csv",
+        "cv": 0.294,
+        "gaps": 6.4,
+        "mean": 19.2
+      },
+      {
+        "product": "sampled_random_200_per_day_BANETTINE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_BANETTINE_cleaned.csv",
+        "cv": 0.472,
+        "gaps": 11.9,
+        "mean": 3.11
+      },
+      {
+        "product": "sampled_random_200_per_day_BOULE_200G",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_BOULE_200G_cleaned.csv",
+        "cv": 0.537,
+        "gaps": 15.2,
+        "mean": 2.86
+      },
+      {
+        "product": "sampled_random_200_per_day_BOULE_400G",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_BOULE_400G_cleaned.csv",
+        "cv": 0.502,
+        "gaps": 9.6,
+        "mean": 4.1
+      },
+      {
+        "product": "sampled_random_200_per_day_CAMPAGNE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_CAMPAGNE_cleaned.csv",
+        "cv": 0.494,
+        "gaps": 8.8,
+        "mean": 3.52
+      },
+      {
+        "product": "sampled_random_200_per_day_CEREAL_BAGUETTE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_CEREAL_BAGUETTE_cleaned.csv",
+        "cv": 0.528,
+        "gaps": 7.4,
+        "mean": 6.45
+      },
+      {
+        "product": "sampled_random_200_per_day_COMPLET",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_COMPLET_cleaned.csv",
+        "cv": 0.461,
+        "gaps": 11.1,
+        "mean": 3.28
+      },
+      {
+        "product": "sampled_random_200_per_day_COUPE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_COUPE_cleaned.csv",
+        "cv": 0.259,
+        "gaps": 6.8,
+        "mean": 19.14
+      },
+      {
+        "product": "sampled_random_200_per_day_CROISSANT",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_CROISSANT_cleaned.csv",
+        "cv": 0.497,
+        "gaps": 6.4,
+        "mean": 23.3
+      },
+      {
+        "product": "sampled_random_200_per_day_FICELLE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_FICELLE_cleaned.csv",
+        "cv": 0.529,
+        "gaps": 13.0,
+        "mean": 3.09
+      },
+      {
+        "product": "sampled_random_200_per_day_MOISSON",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_MOISSON_cleaned.csv",
+        "cv": 0.497,
+        "gaps": 11.9,
+        "mean": 3.13
+      },
+      {
+        "product": "sampled_random_200_per_day_PAIN_AUX_RAISINS",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_PAIN_AUX_RAISINS_cleaned.csv",
+        "cv": 0.501,
+        "gaps": 19.2,
+        "mean": 2.77
+      },
+      {
+        "product": "sampled_random_200_per_day_PAIN_AU_CHOCOLAT",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_PAIN_AU_CHOCOLAT_cleaned.csv",
+        "cv": 0.436,
+        "gaps": 6.9,
+        "mean": 20.72
+      },
+      {
+        "product": "sampled_random_200_per_day_PAIN_BANETTE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_PAIN_BANETTE_cleaned.csv",
+        "cv": 0.483,
+        "gaps": 13.7,
+        "mean": 2.85
+      },
+      {
+        "product": "sampled_random_200_per_day_SPECIAL_BREAD",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_SPECIAL_BREAD_cleaned.csv",
+        "cv": 0.405,
+        "gaps": 7.2,
+        "mean": 4.67
+      },
+      {
+        "product": "sampled_random_200_per_day_TRADITIONAL_BAGUETTE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_TRADITIONAL_BAGUETTE_cleaned.csv",
+        "cv": 0.201,
+        "gaps": 6.4,
+        "mean": 94.57
+      }
+    ]
+  },
+  "low_confidence": {
+    "count": 43,
+    "percentage": 25.6,
+    "products": [
+      {
+        "product": "bakery_sales_idr_processed_BANETTINE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_BANETTINE_cleaned.csv",
+        "cv": 0.474,
+        "gaps": 20.5,
+        "mean": 3.11
+      },
+      {
+        "product": "bakery_sales_idr_processed_BOISSON_33CL",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_BOISSON_33CL_cleaned.csv",
+        "cv": 0.606,
+        "gaps": 42.2,
+        "mean": 2.6
+      },
+      {
+        "product": "bakery_sales_idr_processed_BOULE_200G",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_BOULE_200G_cleaned.csv",
+        "cv": 0.54,
+        "gaps": 23.6,
+        "mean": 2.87
+      },
+      {
+        "product": "bakery_sales_idr_processed_CAFE_OU_EAU",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_CAFE_OU_EAU_cleaned.csv",
+        "cv": 0.666,
+        "gaps": 44.5,
+        "mean": 2.9
+      },
+      {
+        "product": "bakery_sales_idr_processed_COMPLET",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_COMPLET_cleaned.csv",
+        "cv": 0.462,
+        "gaps": 20.1,
+        "mean": 3.28
+      },
+      {
+        "product": "bakery_sales_idr_processed_COOKIE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_COOKIE_cleaned.csv",
+        "cv": 0.614,
+        "gaps": 28.0,
+        "mean": 3.82
+      },
+      {
+        "product": "bakery_sales_idr_processed_CROISSANT_AMANDES",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_CROISSANT_AMANDES_cleaned.csv",
+        "cv": 0.545,
+        "gaps": 32.1,
+        "mean": 2.67
+      },
+      {
+        "product": "bakery_sales_idr_processed_DEMI_BAGUETTE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_DEMI_BAGUETTE_cleaned.csv",
+        "cv": 0.506,
+        "gaps": 44.7,
+        "mean": 1.62
+      },
+      {
+        "product": "bakery_sales_idr_processed_FORMULE_SANDWICH",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_FORMULE_SANDWICH_cleaned.csv",
+        "cv": 0.602,
+        "gaps": 30.7,
+        "mean": 6.64
+      },
+      {
+        "product": "bakery_sales_idr_processed_Kue_Sus_Cokelat",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_Kue_Sus_Cokelat_cleaned.csv",
+        "cv": 0.641,
+        "gaps": 43.4,
+        "mean": 3.92
+      },
+      {
+        "product": "bakery_sales_idr_processed_MOISSON",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_MOISSON_cleaned.csv",
+        "cv": 0.505,
+        "gaps": 20.2,
+        "mean": 3.16
+      },
+      {
+        "product": "bakery_sales_idr_processed_PAIN_BANETTE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_PAIN_BANETTE_cleaned.csv",
+        "cv": 0.485,
+        "gaps": 22.2,
+        "mean": 2.86
+      },
+      {
+        "product": "bakery_sales_idr_processed_PAIN_CHOCO_AMANDES",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_PAIN_CHOCO_AMANDES_cleaned.csv",
+        "cv": 0.573,
+        "gaps": 38.4,
+        "mean": 2.33
+      },
+      {
+        "product": "bakery_sales_idr_processed_Pastry_Apel",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_Pastry_Apel_cleaned.csv",
+        "cv": 0.571,
+        "gaps": 39.3,
+        "mean": 2.3
+      },
+      {
+        "product": "bakery_sales_idr_processed_QUIM_BREAD",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_QUIM_BREAD_cleaned.csv",
+        "cv": 0.6,
+        "gaps": 41.2,
+        "mean": 2.72
+      },
+      {
+        "product": "bakery_sales_idr_processed_Roti_Brioche_Mentega",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_Roti_Brioche_Mentega_cleaned.csv",
+        "cv": 0.532,
+        "gaps": 41.0,
+        "mean": 1.72
+      },
+      {
+        "product": "bakery_sales_idr_processed_Roti_Gulung_Kismis",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_Roti_Gulung_Kismis_cleaned.csv",
+        "cv": 0.501,
+        "gaps": 27.2,
+        "mean": 2.78
+      },
+      {
+        "product": "bakery_sales_idr_processed_Roti_Stik_Tipis",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_Roti_Stik_Tipis_cleaned.csv",
+        "cv": 0.532,
+        "gaps": 21.6,
+        "mean": 3.12
+      },
+      {
+        "product": "bakery_sales_idr_processed_Roti_Tawar_Gandum",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_Roti_Tawar_Gandum_cleaned.csv",
+        "cv": 0.55,
+        "gaps": 28.3,
+        "mean": 2.54
+      },
+      {
+        "product": "bakery_sales_idr_processed_SANDWICH_COMPLET",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_SANDWICH_COMPLET_cleaned.csv",
+        "cv": 0.619,
+        "gaps": 37.4,
+        "mean": 3.81
+      },
+      {
+        "product": "bakery_sales_idr_processed_SAND_JB_EMMENTAL",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_SAND_JB_EMMENTAL_cleaned.csv",
+        "cv": 0.59,
+        "gaps": 42.9,
+        "mean": 2.58
+      },
+      {
+        "product": "bakery_sales_idr_processed_SEIGLE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_SEIGLE_cleaned.csv",
+        "cv": 0.456,
+        "gaps": 41.1,
+        "mean": 1.65
+      },
+      {
+        "product": "bakery_sales_idr_processed_TARTELETTE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_TARTELETTE_cleaned.csv",
+        "cv": 0.636,
+        "gaps": 30.4,
+        "mean": 4.87
+      },
+      {
+        "product": "sampled_random_200_per_day_BOISSON_33CL",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_BOISSON_33CL_cleaned.csv",
+        "cv": 0.601,
+        "gaps": 35.9,
+        "mean": 2.59
+      },
+      {
+        "product": "sampled_random_200_per_day_BRIOCHE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_BRIOCHE_cleaned.csv",
+        "cv": 0.529,
+        "gaps": 34.6,
+        "mean": 1.72
+      },
+      {
+        "product": "sampled_random_200_per_day_CAFE_OU_EAU",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_CAFE_OU_EAU_cleaned.csv",
+        "cv": 0.64,
+        "gaps": 39.1,
+        "mean": 2.82
+      },
+      {
+        "product": "sampled_random_200_per_day_CHAUSSON_AUX_POMMES",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_CHAUSSON_AUX_POMMES_cleaned.csv",
+        "cv": 0.571,
+        "gaps": 32.4,
+        "mean": 2.3
+      },
+      {
+        "product": "sampled_random_200_per_day_COOKIE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_COOKIE_cleaned.csv",
+        "cv": 0.613,
+        "gaps": 20.3,
+        "mean": 3.81
+      },
+      {
+        "product": "sampled_random_200_per_day_CROISSANT_AMANDES",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_CROISSANT_AMANDES_cleaned.csv",
+        "cv": 0.548,
+        "gaps": 24.0,
+        "mean": 2.68
+      },
+      {
+        "product": "sampled_random_200_per_day_DEMI_BAGUETTE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_DEMI_BAGUETTE_cleaned.csv",
+        "cv": 0.503,
+        "gaps": 38.4,
+        "mean": 1.61
+      },
+      {
+        "product": "sampled_random_200_per_day_ECLAIR",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_ECLAIR_cleaned.csv",
+        "cv": 0.644,
+        "gaps": 35.4,
+        "mean": 3.89
+      },
+      {
+        "product": "sampled_random_200_per_day_FORMULE_SANDWICH",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_FORMULE_SANDWICH_cleaned.csv",
+        "cv": 0.596,
+        "gaps": 22.8,
+        "mean": 6.5
+      },
+      {
+        "product": "sampled_random_200_per_day_KOUIGN_AMANN",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_KOUIGN_AMANN_cleaned.csv",
+        "cv": 0.671,
+        "gaps": 44.1,
+        "mean": 2.75
+      },
+      {
+        "product": "sampled_random_200_per_day_PAIN_CHOCO_AMANDES",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_PAIN_CHOCO_AMANDES_cleaned.csv",
+        "cv": 0.57,
+        "gaps": 31.4,
+        "mean": 2.31
+      },
+      {
+        "product": "sampled_random_200_per_day_PAIN",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_PAIN_cleaned.csv",
+        "cv": 0.547,
+        "gaps": 20.4,
+        "mean": 2.53
+      },
+      {
+        "product": "sampled_random_200_per_day_QUIM_BREAD",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_QUIM_BREAD_cleaned.csv",
+        "cv": 0.598,
+        "gaps": 34.7,
+        "mean": 2.71
+      },
+      {
+        "product": "sampled_random_200_per_day_SANDWICH_COMPLET",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_SANDWICH_COMPLET_cleaned.csv",
+        "cv": 0.614,
+        "gaps": 30.4,
+        "mean": 3.77
+      },
+      {
+        "product": "sampled_random_200_per_day_SAND_JB_EMMENTAL",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_SAND_JB_EMMENTAL_cleaned.csv",
+        "cv": 0.59,
+        "gaps": 36.2,
+        "mean": 2.55
+      },
+      {
+        "product": "sampled_random_200_per_day_SEIGLE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_SEIGLE_cleaned.csv",
+        "cv": 0.453,
+        "gaps": 34.7,
+        "mean": 1.64
+      },
+      {
+        "product": "sampled_random_200_per_day_TARTELETTE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_TARTELETTE_cleaned.csv",
+        "cv": 0.637,
+        "gaps": 20.1,
+        "mean": 4.88
+      },
+      {
+        "product": "sampled_random_200_per_day_TRAITEUR",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_TRAITEUR_cleaned.csv",
+        "cv": 0.692,
+        "gaps": 41.2,
+        "mean": 3.58
+      },
+      {
+        "product": "sampled_random_200_per_day_VIENNOISE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_VIENNOISE_cleaned.csv",
+        "cv": 0.478,
+        "gaps": 36.1,
+        "mean": 1.87
+      },
+      {
+        "product": "sampled_random_200_per_day_VIK_BREAD",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_VIK_BREAD_cleaned.csv",
+        "cv": 0.501,
+        "gaps": 44.4,
+        "mean": 4.25
+      }
+    ]
+  },
+  "not_suitable": {
+    "count": 98,
+    "percentage": 58.3,
+    "products": [
+      {
+        "product": "bakery_sales_idr_processed_BAGUETTE_APERO",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_BAGUETTE_APERO_cleaned.csv",
+        "cv": 0.422,
+        "gaps": 93.4,
+        "mean": 1.19,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_BAGUETTE_GRAINE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_BAGUETTE_GRAINE_cleaned.csv",
+        "cv": 0.555,
+        "gaps": 73.8,
+        "mean": 3.66,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_BOULE_POLKA",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_BOULE_POLKA_cleaned.csv",
+        "cv": 0.316,
+        "gaps": 67.7,
+        "mean": 1.14,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_CHOU_CHANTILLY",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_CHOU_CHANTILLY_cleaned.csv",
+        "cv": 0.598,
+        "gaps": 88.9,
+        "mean": 1.69,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_DIVERS_BOULANGERIE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_DIVERS_BOULANGERIE_cleaned.csv",
+        "cv": 0.449,
+        "gaps": 83.6,
+        "mean": 1.23,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_DIVERS_CONFISERIE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_DIVERS_CONFISERIE_cleaned.csv",
+        "cv": 0.385,
+        "gaps": 74.2,
+        "mean": 1.24,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_DIVERS_PATISSERIE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_DIVERS_PATISSERIE_cleaned.csv",
+        "cv": 0.751,
+        "gaps": 82.5,
+        "mean": 2.28,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_DIVERS_SANDWICHS",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_DIVERS_SANDWICHS_cleaned.csv",
+        "cv": 0.598,
+        "gaps": 88.8,
+        "mean": 2.23,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_DIVERS_VIENNOISERIE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_DIVERS_VIENNOISERIE_cleaned.csv",
+        "cv": 0.64,
+        "gaps": 66.8,
+        "mean": 1.87,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_FINANCIER_X5",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_FINANCIER_X5_cleaned.csv",
+        "cv": 0.636,
+        "gaps": 51.9,
+        "mean": 1.87,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_FLAN_ABRICOT",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_FLAN_ABRICOT_cleaned.csv",
+        "cv": 0.644,
+        "gaps": 68.7,
+        "mean": 1.9,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_FLAN",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_FLAN_cleaned.csv",
+        "cv": 0.524,
+        "gaps": 56.4,
+        "mean": 1.92,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_FONDANT_CHOCOLAT",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_FONDANT_CHOCOLAT_cleaned.csv",
+        "cv": 0.47,
+        "gaps": 73.3,
+        "mean": 1.79,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_FRAISIER",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_FRAISIER_cleaned.csv",
+        "cv": 0.617,
+        "gaps": 87.8,
+        "mean": 3.06,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_GAL_FRANGIPANE_4P",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_GAL_FRANGIPANE_4P_cleaned.csv",
+        "cv": 0.712,
+        "gaps": 93.6,
+        "mean": 3.32,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_GAL_FRANGIPANE_6P",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_GAL_FRANGIPANE_6P_cleaned.csv",
+        "cv": 0.616,
+        "gaps": 94.4,
+        "mean": 2.14,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_GAL_POMME_4P",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_GAL_POMME_4P_cleaned.csv",
+        "cv": 0.574,
+        "gaps": 95.3,
+        "mean": 2.16,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_GD_FAR_BRETON",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_GD_FAR_BRETON_cleaned.csv",
+        "cv": 0.465,
+        "gaps": 90.1,
+        "mean": 1.45,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_GD_KOUIGN_AMANN",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_GD_KOUIGN_AMANN_cleaned.csv",
+        "cv": 0.568,
+        "gaps": 68.7,
+        "mean": 1.66,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_GRANDE_SUCETTE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_GRANDE_SUCETTE_cleaned.csv",
+        "cv": 0.521,
+        "gaps": 88.3,
+        "mean": 1.72,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_GRAND_FAR_BRETON",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_GRAND_FAR_BRETON_cleaned.csv",
+        "cv": 0.542,
+        "gaps": 55.0,
+        "mean": 1.83,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_Kue_Manis_Mentega_Berlapis",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_Kue_Manis_Mentega_Berlapis_cleaned.csv",
+        "cv": 0.67,
+        "gaps": 49.6,
+        "mean": 2.76,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_MACARON",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_MACARON_cleaned.csv",
+        "cv": 0.623,
+        "gaps": 87.9,
+        "mean": 5.03,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_MILLES_FEUILLES",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_MILLES_FEUILLES_cleaned.csv",
+        "cv": 0.529,
+        "gaps": 67.9,
+        "mean": 1.96,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_NANTAIS",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_NANTAIS_cleaned.csv",
+        "cv": 0.681,
+        "gaps": 65.4,
+        "mean": 2.51,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_NOIX_JAPONAISE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_NOIX_JAPONAISE_cleaned.csv",
+        "cv": 0.523,
+        "gaps": 84.1,
+        "mean": 1.63,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_PAILLE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_PAILLE_cleaned.csv",
+        "cv": 0.501,
+        "gaps": 86.9,
+        "mean": 1.89,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_PALET_BRETON",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_PALET_BRETON_cleaned.csv",
+        "cv": 0.682,
+        "gaps": 85.7,
+        "mean": 1.9,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_PARIS_BREST",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_PARIS_BREST_cleaned.csv",
+        "cv": 0.547,
+        "gaps": 58.4,
+        "mean": 2.07,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_PLAT_7_00",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_PLAT_7_00_cleaned.csv",
+        "cv": 0.422,
+        "gaps": 87.6,
+        "mean": 1.38,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_PLAT_7_60E",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_PLAT_7_60E_cleaned.csv",
+        "cv": 0.584,
+        "gaps": 75.0,
+        "mean": 2.08,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_PLAT_8_30E",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_PLAT_8_30E_cleaned.csv",
+        "cv": 0.548,
+        "gaps": 86.3,
+        "mean": 1.87,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_PT_NANTAIS",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_PT_NANTAIS_cleaned.csv",
+        "cv": 0.58,
+        "gaps": 77.1,
+        "mean": 1.74,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_ROYAL",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_ROYAL_cleaned.csv",
+        "cv": 0.779,
+        "gaps": 92.7,
+        "mean": 2.27,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_SACHET_DE_CROUTON",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_SACHET_DE_CROUTON_cleaned.csv",
+        "cv": 0.387,
+        "gaps": 92.5,
+        "mean": 1.21,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_SACHET_VIENNOISERIE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_SACHET_VIENNOISERIE_cleaned.csv",
+        "cv": 0.465,
+        "gaps": 72.6,
+        "mean": 1.44,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_SAVARIN",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_SAVARIN_cleaned.csv",
+        "cv": 0.56,
+        "gaps": 85.9,
+        "mean": 2.07,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_SUCETTE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_SUCETTE_cleaned.csv",
+        "cv": 0.647,
+        "gaps": 71.6,
+        "mean": 2.31,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_TARTELETTE_FRAISE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_TARTELETTE_FRAISE_cleaned.csv",
+        "cv": 0.562,
+        "gaps": 86.0,
+        "mean": 2.59,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_TARTE_FRAISE_4PER",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_TARTE_FRAISE_4PER_cleaned.csv",
+        "cv": 0.482,
+        "gaps": 92.1,
+        "mean": 1.35,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_TARTE_FRUITS_4P",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_TARTE_FRUITS_4P_cleaned.csv",
+        "cv": 0.448,
+        "gaps": 85.5,
+        "mean": 1.36,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_TRAITEUR",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_TRAITEUR_cleaned.csv",
+        "cv": 0.688,
+        "gaps": 62.2,
+        "mean": 3.6,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_TROPEZIENNE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_TROPEZIENNE_cleaned.csv",
+        "cv": 0.49,
+        "gaps": 83.2,
+        "mean": 1.76,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_VIENNOISE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_VIENNOISE_cleaned.csv",
+        "cv": 0.478,
+        "gaps": 87.2,
+        "mean": 1.87,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "bakery_sales_idr_processed_VIK_BREAD",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\bakery_sales_idr_processed_VIK_BREAD_cleaned.csv",
+        "cv": 0.501,
+        "gaps": 49.5,
+        "mean": 4.26,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "fastfood_sales_cleaned_Aalopuri",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\fastfood_sales_cleaned_Aalopuri_cleaned.csv",
+        "cv": 0.732,
+        "gaps": 87.8,
+        "mean": 9.69,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "fastfood_sales_cleaned_Cold_coffee",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\fastfood_sales_cleaned_Cold_coffee_cleaned.csv",
+        "cv": 0.586,
+        "gaps": 86.4,
+        "mean": 11.02,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "fastfood_sales_cleaned_Frankie",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\fastfood_sales_cleaned_Frankie_cleaned.csv",
+        "cv": 0.601,
+        "gaps": 86.2,
+        "mean": 9.43,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "fastfood_sales_cleaned_Panipuri",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\fastfood_sales_cleaned_Panipuri_cleaned.csv",
+        "cv": 0.681,
+        "gaps": 86.8,
+        "mean": 9.31,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "fastfood_sales_cleaned_Sandwich",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\fastfood_sales_cleaned_Sandwich_cleaned.csv",
+        "cv": 0.749,
+        "gaps": 86.0,
+        "mean": 9.67,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "fastfood_sales_cleaned_Sugarcane_juice",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\fastfood_sales_cleaned_Sugarcane_juice_cleaned.csv",
+        "cv": 0.546,
+        "gaps": 83.9,
+        "mean": 10.3,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "fastfood_sales_cleaned_Vadapav",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\fastfood_sales_cleaned_Vadapav_cleaned.csv",
+        "cv": 0.493,
+        "gaps": 87.3,
+        "mean": 9.65,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "message_Es_Teh_Manis",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\message_Es_Teh_Manis_cleaned.csv",
+        "cv": 0.559,
+        "gaps": 79.3,
+        "mean": 16.73,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "message_Jeruk_Hangat",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\message_Jeruk_Hangat_cleaned.csv",
+        "cv": 0.403,
+        "gaps": 86.7,
+        "mean": 15.03,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "message_Kwetiau_Goreng_Seafood",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\message_Kwetiau_Goreng_Seafood_cleaned.csv",
+        "cv": 0.55,
+        "gaps": 78.5,
+        "mean": 14.98,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "message_Mie_Goreng_Ayam",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\message_Mie_Goreng_Ayam_cleaned.csv",
+        "cv": 0.504,
+        "gaps": 81.7,
+        "mean": 20.0,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "message_Nasi_Gila",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\message_Nasi_Gila_cleaned.csv",
+        "cv": 0.52,
+        "gaps": 82.6,
+        "mean": 15.82,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "message_Nasi_Goreng_Telur",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\message_Nasi_Goreng_Telur_cleaned.csv",
+        "cv": 0.58,
+        "gaps": 82.7,
+        "mean": 20.73,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_BAGUETTE_GRAINE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_BAGUETTE_GRAINE_cleaned.csv",
+        "cv": 0.559,
+        "gaps": 70.7,
+        "mean": 3.66,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_BOULE_POLKA",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_BOULE_POLKA_cleaned.csv",
+        "cv": 0.316,
+        "gaps": 64.1,
+        "mean": 1.14,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_CHOU_CHANTILLY",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_CHOU_CHANTILLY_cleaned.csv",
+        "cv": 0.598,
+        "gaps": 87.4,
+        "mean": 1.69,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_DIVERS_BOULANGERIE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_DIVERS_BOULANGERIE_cleaned.csv",
+        "cv": 0.447,
+        "gaps": 82.4,
+        "mean": 1.21,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_DIVERS_CONFISERIE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_DIVERS_CONFISERIE_cleaned.csv",
+        "cv": 0.385,
+        "gaps": 71.1,
+        "mean": 1.24,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_DIVERS_PATISSERIE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_DIVERS_PATISSERIE_cleaned.csv",
+        "cv": 0.743,
+        "gaps": 80.4,
+        "mean": 2.28,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_DIVERS_SANDWICHS",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_DIVERS_SANDWICHS_cleaned.csv",
+        "cv": 0.607,
+        "gaps": 85.1,
+        "mean": 2.2,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_DIVERS_VIENNOISERIE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_DIVERS_VIENNOISERIE_cleaned.csv",
+        "cv": 0.643,
+        "gaps": 62.7,
+        "mean": 1.87,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_FINANCIER_X5",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_FINANCIER_X5_cleaned.csv",
+        "cv": 0.6,
+        "gaps": 47.1,
+        "mean": 1.81,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_FLAN_ABRICOT",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_FLAN_ABRICOT_cleaned.csv",
+        "cv": 0.647,
+        "gaps": 64.3,
+        "mean": 1.89,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_FLAN",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_FLAN_cleaned.csv",
+        "cv": 0.484,
+        "gaps": 51.1,
+        "mean": 1.84,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_FONDANT_CHOCOLAT",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_FONDANT_CHOCOLAT_cleaned.csv",
+        "cv": 0.47,
+        "gaps": 60.5,
+        "mean": 1.79,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_FRAISIER",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_FRAISIER_cleaned.csv",
+        "cv": 0.622,
+        "gaps": 83.8,
+        "mean": 3.04,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_GAL_FRANGIPANE_4P",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_GAL_FRANGIPANE_4P_cleaned.csv",
+        "cv": 0.712,
+        "gaps": 89.8,
+        "mean": 3.32,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_GAL_FRANGIPANE_6P",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_GAL_FRANGIPANE_6P_cleaned.csv",
+        "cv": 0.616,
+        "gaps": 90.6,
+        "mean": 2.14,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_GAL_POMME_4P",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_GAL_POMME_4P_cleaned.csv",
+        "cv": 0.574,
+        "gaps": 92.1,
+        "mean": 2.16,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_GD_FAR_BRETON",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_GD_FAR_BRETON_cleaned.csv",
+        "cv": 0.465,
+        "gaps": 82.0,
+        "mean": 1.46,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_GD_KOUIGN_AMANN",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_GD_KOUIGN_AMANN_cleaned.csv",
+        "cv": 0.571,
+        "gaps": 65.0,
+        "mean": 1.65,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_GRANDE_SUCETTE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_GRANDE_SUCETTE_cleaned.csv",
+        "cv": 0.521,
+        "gaps": 87.2,
+        "mean": 1.72,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_GRAND_FAR_BRETON",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_GRAND_FAR_BRETON_cleaned.csv",
+        "cv": 0.54,
+        "gaps": 50.2,
+        "mean": 1.83,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_MACARON",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_MACARON_cleaned.csv",
+        "cv": 0.623,
+        "gaps": 51.9,
+        "mean": 5.03,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_MILLES_FEUILLES",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_MILLES_FEUILLES_cleaned.csv",
+        "cv": 0.527,
+        "gaps": 63.5,
+        "mean": 1.96,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_NANTAIS",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_NANTAIS_cleaned.csv",
+        "cv": 0.681,
+        "gaps": 65.2,
+        "mean": 2.5,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_NOIX_JAPONAISE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_NOIX_JAPONAISE_cleaned.csv",
+        "cv": 0.523,
+        "gaps": 81.6,
+        "mean": 1.63,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_PAILLE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_PAILLE_cleaned.csv",
+        "cv": 0.501,
+        "gaps": 52.7,
+        "mean": 1.89,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_PALET_BRETON",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_PALET_BRETON_cleaned.csv",
+        "cv": 0.682,
+        "gaps": 70.6,
+        "mean": 1.9,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_PARIS_BREST",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_PARIS_BREST_cleaned.csv",
+        "cv": 0.544,
+        "gaps": 52.9,
+        "mean": 2.06,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_PLAT_7_00",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_PLAT_7_00_cleaned.csv",
+        "cv": 0.422,
+        "gaps": 77.7,
+        "mean": 1.4,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_PLAT_7_60E",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_PLAT_7_60E_cleaned.csv",
+        "cv": 0.594,
+        "gaps": 60.5,
+        "mean": 2.04,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_PLAT_8_30E",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_PLAT_8_30E_cleaned.csv",
+        "cv": 0.535,
+        "gaps": 75.4,
+        "mean": 1.85,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_PT_NANTAIS",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_PT_NANTAIS_cleaned.csv",
+        "cv": 0.579,
+        "gaps": 62.8,
+        "mean": 1.75,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_ROYAL",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_ROYAL_cleaned.csv",
+        "cv": 0.779,
+        "gaps": 92.1,
+        "mean": 2.27,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_SACHET_DE_CROUTON",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_SACHET_DE_CROUTON_cleaned.csv",
+        "cv": 0.382,
+        "gaps": 92.4,
+        "mean": 1.19,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_SACHET_VIENNOISERIE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_SACHET_VIENNOISERIE_cleaned.csv",
+        "cv": 0.472,
+        "gaps": 65.7,
+        "mean": 1.46,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_SAVARIN",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_SAVARIN_cleaned.csv",
+        "cv": 0.56,
+        "gaps": 83.4,
+        "mean": 2.07,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_SUCETTE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_SUCETTE_cleaned.csv",
+        "cv": 0.647,
+        "gaps": 68.2,
+        "mean": 2.31,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_TARTELETTE_FRAISE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_TARTELETTE_FRAISE_cleaned.csv",
+        "cv": 0.552,
+        "gaps": 81.6,
+        "mean": 2.56,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_TARTE_FRAISE_4PER",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_TARTE_FRAISE_4PER_cleaned.csv",
+        "cv": 0.482,
+        "gaps": 91.6,
+        "mean": 1.35,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_TARTE_FRUITS_4P",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_TARTE_FRUITS_4P_cleaned.csv",
+        "cv": 0.439,
+        "gaps": 83.2,
+        "mean": 1.35,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      },
+      {
+        "product": "sampled_random_200_per_day_TROPEZIENNE",
+        "file": "C:\\Users\\delik\\Downloads\\python-service\\training\\preprocessed\\sampled_random_200_per_day_TROPEZIENNE_cleaned.csv",
+        "cv": 0.49,
+        "gaps": 78.7,
+        "mean": 1.76,
+        "reason": "Extreme volatility or data gaps - recommend manual stock management"
+      }
+    ]
+  },
+  "phase1_excluded": {
+    "too_few_rows": [],
+    "flat_data": [
+      "bakery_sales_idr_processed_CHOCOLAT",
+      "bakery_sales_idr_processed_DEMI_PAIN",
+      "bakery_sales_idr_processed_DIVERS_BOISSONS",
+      "bakery_sales_idr_processed_GACHE",
+      "bakery_sales_idr_processed_GD_NANTAIS",
+      "bakery_sales_idr_processed_PAIN_S_SEL",
+      "bakery_sales_idr_processed_SPECIAL_BREAD_KG",
+      "bakery_sales_idr_processed_TARTE_FRAISE_6P",
+      "bakery_sales_idr_processed_TARTE_FRUITS_6P",
+      "sampled_random_200_per_day_BAGUETTE_APERO",
+      "sampled_random_200_per_day_CHOCOLAT",
+      "sampled_random_200_per_day_DEMI_PAIN",
+      "sampled_random_200_per_day_DIVERS_BOISSONS",
+      "sampled_random_200_per_day_GACHE",
+      "sampled_random_200_per_day_GD_NANTAIS",
+      "sampled_random_200_per_day_PAIN_S_SEL",
+      "sampled_random_200_per_day_SPECIAL_BREAD_KG",
+      "sampled_random_200_per_day_TARTE_FRAISE_6P",
+      "sampled_random_200_per_day_TARTE_FRUITS_6P"
+    ],
+    "no_variance": []
+  }
+}

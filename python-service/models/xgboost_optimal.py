@@ -23,6 +23,10 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 
+from config.runtime_config import get_runtime_config
+
+runtime_config = get_runtime_config()
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -40,8 +44,11 @@ class HybridBrain:
         self.physics_metrics: Dict[str, Any] = {}
         self.is_trained_ml = False
         self.last_row: Optional[Dict[str, Any]] = None
+        self.last_date: Optional[str] = None
         self.trained_at: Optional[str] = None
         self.mae: float = 0.0
+        self.baseline_mae: Optional[float] = None
+        self.ensemble_weights: Optional[Dict[str, float]] = None
 
         # XGBoost Hyperparameters
         self.params = {
@@ -63,10 +70,16 @@ class HybridBrain:
         Formula: M = 0.5*M(7) + 0.3*M(14) + 0.2*M(30)
         """
         d = df.copy()
+        spans = runtime_config.demand.ema_spans
+        weights = runtime_config.demand.ema_weights
 
-        d['ema_7'] = d['quantity'].ewm(span=7, adjust=False).mean()
-        d['ema_14'] = d['quantity'].ewm(span=14, adjust=False).mean()
-        d['ema_30'] = d['quantity'].ewm(span=30, adjust=False).mean()
+        short_span = spans.get('short', 7)
+        medium_span = spans.get('medium', 14)
+        long_span = spans.get('long', 30)
+
+        d['ema_short'] = d['quantity'].ewm(span=short_span, adjust=False).mean()
+        d['ema_medium'] = d['quantity'].ewm(span=medium_span, adjust=False).mean()
+        d['ema_long'] = d['quantity'].ewm(span=long_span, adjust=False).mean()
 
         curr = d.iloc[-1]
 
@@ -75,30 +88,36 @@ class HybridBrain:
                 return 0.0
             return (current_ema - lag_val) / lag_val
 
-        lag_7 = d['ema_7'].shift(7).iloc[-1]
-        lag_14 = d['ema_14'].shift(14).iloc[-1]
-        lag_30 = d['ema_30'].shift(30).iloc[-1]
+        lag_short = d['ema_short'].shift(short_span).iloc[-1]
+        lag_medium = d['ema_medium'].shift(medium_span).iloc[-1]
+        lag_long = d['ema_long'].shift(long_span).iloc[-1]
 
-        m7 = calc_m(curr['ema_7'], lag_7)
-        m14 = calc_m(curr['ema_14'], lag_14)
-        m30 = calc_m(curr['ema_30'], lag_30)
+        m_short = calc_m(curr['ema_short'], lag_short)
+        m_medium = calc_m(curr['ema_medium'], lag_medium)
+        m_long = calc_m(curr['ema_long'], lag_long)
 
-        combined_momentum = (0.5 * m7) + (0.3 * m14) + (0.2 * m30)
+        combined_momentum = (
+            (weights.get('short', 0.0) * m_short)
+            + (weights.get('medium', 0.0) * m_medium)
+            + (weights.get('long', 0.0) * m_long)
+        )
+
+        thresholds = runtime_config.demand.momentum_thresholds
 
         status = 'STABLE'
-        if combined_momentum > 0.05:
+        if combined_momentum > thresholds.get('up_strong', 0.05):
             status = 'TRENDING_UP'
-        elif combined_momentum > 0.02:
+        elif combined_momentum > thresholds.get('up_mild', 0.02):
             status = 'GROWING'
-        elif combined_momentum < -0.05:
+        elif combined_momentum < thresholds.get('down_strong', -0.05):
             status = 'FALLING'
-        elif combined_momentum < -0.02:
+        elif combined_momentum < thresholds.get('down_mild', -0.02):
             status = 'DECLINING'
 
         return {
-            "momentum7": float(m7),
-            "momentum14": float(m14),
-            "momentum30": float(m30),
+            "momentum7": float(m_short),
+            "momentum14": float(m_medium),
+            "momentum30": float(m_long),
             "combined": float(combined_momentum),
             "combined_momentum": float(combined_momentum),
             "status": status
@@ -112,50 +131,80 @@ class HybridBrain:
         Implementasi TASK-07 (Factors) & TASK-09 (Sigma Residual)
         Formula B = (actual - expected) / sigma_residual
         """
-        df['baseline'] = df['quantity'].rolling(window=30, min_periods=1).mean()
+        df = df.copy()
+        baseline_window = runtime_config.demand.baseline_window_days
+        df['baseline'] = df['quantity'].rolling(window=baseline_window, min_periods=1).mean()
 
         df['dow'] = df['date'].dt.dayofweek
         dow_stats = df.groupby('dow')['quantity'].mean()
         global_avg = df['quantity'].mean()
+        weekend_dows = set(runtime_config.calendar.weekend_dows)
 
         def get_dow_factor(row):
             if global_avg == 0:
                 return 1.0
             return dow_stats.get(row['dow'], global_avg) / global_avg
 
-        def get_payday_factor(row):
-            day = row['date'].day
-            if 25 <= day <= 31 or 1 <= day <= 5:
-                return 1.15
+        def get_payday_factor(date_val: pd.Timestamp):
+            day = date_val.day
+            for start, end in runtime_config.calendar.payday_ranges:
+                if start <= day <= end:
+                    return runtime_config.calendar.payday_multiplier
             return 1.0
 
-        last_row = df.iloc[-1]
-        dow_factor = get_dow_factor(last_row)
-        payday_factor = get_payday_factor(last_row)
+        def get_special_factor(date_val: pd.Timestamp):
+            return runtime_config.calendar.special_boost_dates.get(date_val.strftime('%Y-%m-%d'), 1.0)
 
-        expected = last_row['baseline'] * dow_factor * payday_factor
-        actual = last_row['quantity']
+        df['expected_full'] = df.apply(
+            lambda row: row['baseline']
+            * get_dow_factor(row)
+            * get_payday_factor(row['date'])
+            * get_special_factor(row['date']),
+            axis=1
+        )
 
-        residuals = df['quantity'] - df['baseline']
+        residuals = df['quantity'] - df['expected_full']
         sigma = residuals.std()
         if sigma == 0 or np.isnan(sigma):
-            sigma = 1.0
+            fallback = global_avg * runtime_config.demand.residual_fallback_ratio
+            sigma = fallback if fallback > 0 else 1.0
+
+        last_row = df.iloc[-1]
+        expected = last_row['expected_full']
+        actual = last_row['quantity']
+        dow_factor = get_dow_factor(last_row)
 
         burst_score = (actual - expected) / sigma
 
+        thresholds = runtime_config.demand.burst_thresholds
         level = 'NORMAL'
-        if burst_score > 3.0:
+        if burst_score > thresholds.get('critical', 3.0):
             level = 'CRITICAL'
-        elif burst_score > 2.0:
+        elif burst_score > thresholds.get('significant', 2.0):
             level = 'SIGNIFICANT'
-        elif burst_score > 1.0:
+        elif burst_score > thresholds.get('mild', 1.0):
             level = 'MILD'
 
         burst_type = 'NORMAL'
         if level != 'NORMAL':
-            if last_row['dow'] >= 5:
+            window_days = runtime_config.demand.burst_seasonal_window_days
+            cutoff_date = last_row['date'] - pd.Timedelta(days=window_days)
+            recent = df[df['date'] >= cutoff_date]
+            if not recent.empty:
+                weekend_mean = recent[recent['dow'].isin(weekend_dows)]['quantity'].mean()
+                weekday_mean = recent[~recent['dow'].isin(weekend_dows)]['quantity'].mean()
+            else:
+                weekend_mean = weekday_mean = 0
+
+            weekend_bias = (
+                weekday_mean > 0
+                and last_row['dow'] in weekend_dows
+                and weekend_mean >= weekday_mean * runtime_config.demand.weekend_seasonal_ratio
+            )
+
+            if weekend_bias:
                 burst_type = 'SEASONAL'
-            elif burst_score > 4.0:
+            elif burst_score > runtime_config.demand.burst_viral_threshold:
                 burst_type = 'VIRAL'
             else:
                 burst_type = 'MONITORING'
@@ -169,7 +218,8 @@ class HybridBrain:
             "factors": {
                 "baseline": float(last_row['baseline']),
                 "dow": float(dow_factor),
-                "payday": float(payday_factor)
+                "payday": float(get_payday_factor(last_row['date'])),
+                "special": float(get_special_factor(last_row['date']))
             }
         }
 
@@ -182,7 +232,8 @@ class HybridBrain:
         df = df.sort_values('date')
         df['day_of_week'] = df['date'].dt.dayofweek
         df['day_of_month'] = df['date'].dt.day
-        df['is_weekend'] = df['day_of_week'].isin([5, 6]).astype(int)
+        weekend_dows = set(runtime_config.calendar.weekend_dows)
+        df['is_weekend'] = df['day_of_week'].isin(weekend_dows).astype(int)
         df['lag_1'] = df['quantity'].shift(1).bfill()
         df['lag_7'] = df['quantity'].shift(7).bfill()
         df['roll_mean_7'] = df['quantity'].shift(1).rolling(window=7, min_periods=1).mean().bfill()
@@ -191,9 +242,17 @@ class HybridBrain:
     def _calculate_priority_score(self) -> float:
         momentum = self.physics_metrics.get('momentum', {})
         burst = self.physics_metrics.get('burst', {})
-        norm_m = min(max(momentum.get('combined', 0.0), -1), 1)
-        norm_b = min(max(burst.get('burst_score', 0.0) / 3.0, 0), 1)
-        return float((0.7 * norm_m) + (0.3 * norm_b))
+        m_clamp_min = runtime_config.demand.priority_m_clamp_min
+        m_clamp_max = runtime_config.demand.priority_m_clamp_max
+        norm_m = min(max(momentum.get('combined', 0.0), m_clamp_min), m_clamp_max)
+
+        burst_divisor = runtime_config.demand.priority_burst_divisor or 1.0
+        norm_b = burst.get('burst_score', 0.0) / burst_divisor
+        norm_b = min(max(norm_b, 0.0), 1.0)
+
+        m_weight = runtime_config.demand.priority_momentum_weight
+        b_weight = runtime_config.demand.priority_burst_weight
+        return float((m_weight * norm_m) + (b_weight * norm_b))
 
     def load_model(self, product_id: str, model_path: str) -> bool:
         """Load trained model from file"""
@@ -212,6 +271,9 @@ class HybridBrain:
                 self.mae = loaded_brain.mae
                 self.last_row = loaded_brain.last_row
                 self.is_trained_ml = loaded_brain.is_trained_ml
+                self.baseline_mae = getattr(loaded_brain, "baseline_mae", None)
+                self.ensemble_weights = getattr(loaded_brain, "ensemble_weights", None)
+                self.last_date = getattr(loaded_brain, "last_date", None)
             elif isinstance(state, dict):
                 self.product_id = state.get('product_id', product_id)
                 self.model = state.get('model')
@@ -220,6 +282,9 @@ class HybridBrain:
                 self.mae = state.get('mae', 0.0)
                 self.last_row = state.get('last_row')
                 self.is_trained_ml = bool(state.get('is_trained_ml', True))
+                self.baseline_mae = state.get('baseline_mae')
+                self.ensemble_weights = state.get('ensemble_weights')
+                self.last_date = state.get('last_date')
             else:
                 logger.error(f"Unsupported model state type: {type(state)}")
                 return False
@@ -227,6 +292,9 @@ class HybridBrain:
             if self.model is None:
                 logger.error(f"Model object is None after loading {model_path}")
                 return False
+
+            if self.ensemble_weights is None and self.baseline_mae is not None:
+                self.ensemble_weights = self._compute_ensemble_weights()
 
             meta_path = model_path.replace('.pkl', '_metadata.json')
             if os.path.exists(meta_path):
@@ -267,6 +335,8 @@ class HybridBrain:
 
         if df.empty:
             raise ValueError("No valid sales data provided after cleaning")
+
+        self.last_date = df['date'].iloc[-1].isoformat()
 
         momentum_res = self._calculate_momentum_metrics(df)
         burst_res = self._detect_burst_physics(df)
@@ -311,7 +381,11 @@ class HybridBrain:
         residuals = y - preds
         self.std_error = float(np.std(residuals))
         self.mae = float(np.mean(np.abs(residuals)))
+        baseline_preds = train_df['roll_mean_7']
+        self.baseline_mae = float(np.mean(np.abs(baseline_preds - y)))
         self.trained_at = datetime.now().isoformat()
+
+        self.ensemble_weights = self._compute_ensemble_weights()
 
         last_feats = train_df.iloc[-1][feature_cols].to_dict()
         self.last_row = {
@@ -331,6 +405,48 @@ class HybridBrain:
             "recommendation": self.get_recommendation()
         }
 
+    def _compute_ensemble_weights(self) -> Dict[str, float]:
+        """More aggressive rule weighting for volatile products"""
+        default_ml = runtime_config.demand.ensemble_ml_weight_default
+        min_ml = runtime_config.demand.ensemble_ml_weight_min
+        max_ml = runtime_config.demand.ensemble_ml_weight_max
+
+        baseline_mae = self.baseline_mae
+        ml_mae = self.mae
+
+        if baseline_mae is None or baseline_mae <= 0 or ml_mae is None:
+            ml_weight = default_ml
+        else:
+            improvement = max(0.0, min(1.0, 1.0 - (ml_mae / baseline_mae)))
+            ml_weight = min_ml + (max_ml - min_ml) * improvement
+
+        # ✅ UPDATED: More aggressive CV penalty
+        if hasattr(self, 'last_row') and self.last_row:
+            baseline = self.last_row.get('roll_mean_7', 0)
+            if baseline > 0 and self.std_error > 0:
+                cv = self.std_error / baseline
+                
+                # High CV → Much more rules, less ML
+                if cv > 0.6:  # CV > 60% (very volatile)
+                    penalty = 0.45  # 35% penalty
+                    ml_weight = max(min_ml, ml_weight - penalty)
+                    logger.info(f"Very high CV ({cv:.1%}), reducing ML to {ml_weight:.1%}")
+                elif cv > 0.5:  # CV 50-60%
+                    penalty = 0.35  # 25% penalty
+                    ml_weight = max(min_ml, ml_weight - penalty)
+                    logger.info(f"High CV ({cv:.1%}), reducing ML to {ml_weight:.1%}")
+                elif cv > 0.4:  # CV 40-50%
+                    penalty = 0.25  # 15% penalty
+                    ml_weight = max(min_ml, ml_weight - penalty)
+                    logger.info(f"Moderate CV ({cv:.1%}), reducing ML to {ml_weight:.1%}")
+
+        ml_weight = min(max(ml_weight, min_ml), max_ml)
+        rule_weight = 1.0 - ml_weight
+        
+        logger.info(f"Final weights: ML={ml_weight:.1%}, Rules={rule_weight:.1%}")
+        
+        return {"ml": ml_weight, "rule": rule_weight}
+
     def _cold_start_train(self, df: pd.DataFrame):
         """Minimal fallback (legacy)"""
         self.is_trained_ml = False
@@ -342,19 +458,34 @@ class HybridBrain:
         """Handle cold start with rules only"""
         logger.info("Using rule-based forecasting (cold start)")
 
-        mean_qty = df['quantity'].mean()
+        mean_qty = max(df['quantity'].mean(), 1.0)  # ✅ Ensure non-zero
         std_qty = df['quantity'].std()
 
         self.is_trained_ml = False
         self.std_error = float(std_qty) if std_qty > 0 else float(mean_qty * 0.2)
+        
+        last_dt = df['date'].iloc[-1] if 'date' in df.columns else pd.Timestamp.now()
+        self.last_date = pd.to_datetime(last_dt).isoformat()
+        day_of_week = pd.to_datetime(last_dt).dayofweek
+        weekend_dows = set(runtime_config.calendar.weekend_dows)
+        
+        # ✅ Safe last_row with guaranteed non-zero values
+        last_quantity = max(df['quantity'].iloc[-1], 1.0)
+        lag_7_val = max(df['quantity'].iloc[-7], mean_qty) if len(df) >= 7 else mean_qty
+        
         self.last_row = {
             'roll_mean_7': float(mean_qty),
-            'lag_1': float(df['quantity'].iloc[-1]),
-            'lag_7': float(df['quantity'].iloc[-1]) if len(df) >= 7 else float(mean_qty),
-            'day_of_week': pd.Timestamp.now().dayofweek,
-            'day_of_month': pd.Timestamp.now().day,
-            'is_weekend': int(pd.Timestamp.now().dayofweek >= 5)
+            'lag_1': float(last_quantity),
+            'lag_7': float(lag_7_val),
+            'day_of_week': day_of_week,
+            'day_of_month': pd.to_datetime(last_dt).day,
+            'is_weekend': int(day_of_week in weekend_dows)
         }
+        
+        logger.info(f"Cold start last_row: {self.last_row}")  # ✅ Debug log
+        
+        self.baseline_mae = None
+        self.ensemble_weights = {"ml": 0.0, "rule": 1.0}
 
         return {
             'success': True,
@@ -369,15 +500,30 @@ class HybridBrain:
         }
 
     def _prepare_feature_row(self, next_date: pd.Timestamp, current_row: Dict[str, Any]) -> Dict[str, Any]:
+        weekend_dows = set(runtime_config.calendar.weekend_dows)
+        
+        # SAFE DEFAULTS - prevent zero predictions
+        safe_roll_mean = current_row.get('roll_mean_7', 0)
+        if safe_roll_mean <= 0:
+            # Fallback to lag_1 or a minimum baseline
+            safe_roll_mean = max(
+                current_row.get('lag_1', 0),
+                current_row.get('lag_7', 0),
+                1.0  # Minimum baseline
+            )
+        
+        safe_lag_1 = current_row.get('lag_1', safe_roll_mean)
+        safe_lag_7 = current_row.get('lag_7', safe_roll_mean)
+        
         return {
             'day_of_week': next_date.dayofweek,
             'day_of_month': next_date.day,
-            'is_weekend': 1 if next_date.dayofweek >= 5 else 0,
-            'lag_1': current_row.get('lag_1', current_row.get('roll_mean_7', 0)),
-            'lag_7': current_row.get('lag_7', current_row.get('roll_mean_7', 0)),
-            'roll_mean_7': current_row.get('roll_mean_7', 0)
+            'is_weekend': 1 if next_date.dayofweek in weekend_dows else 0,
+            'lag_1': max(safe_lag_1, 0.1),  # Ensure non-zero
+            'lag_7': max(safe_lag_7, 0.1),  # Ensure non-zero
+            'roll_mean_7': max(safe_roll_mean, 0.1)  # Ensure non-zero
         }
-
+        
     def predict_next_days(self, days: int = 7) -> List[Dict]:
         """
         Predict next N days using hybrid approach with validation and smoothing
@@ -387,13 +533,31 @@ class HybridBrain:
         if not self.last_row:
             raise ValueError("Model not trained. Call train() first.")
 
+        # Validation
+        required_keys = ['roll_mean_7', 'lag_1', 'lag_7']
+        for key in required_keys:
+            if key not in self.last_row or self.last_row[key] is None:
+                logger.warning(f"Missing {key} in last_row, using fallback")
+                baseline = self.physics_metrics.get('burst', {}).get('factors', {}).get('baseline', 1.0)
+                self.last_row[key] = max(baseline, 1.0)
+        
+        for key in required_keys:
+            if self.last_row[key] <= 0:
+                self.last_row[key] = 1.0
+        
         logger.info(f"Predicting {days} days for product: {self.product_id or 'unknown'}")
         logger.info(f"Starting from last_row: {self.last_row}")
 
         predictions: List[Dict] = []
 
         if self.model is not None and self.is_trained_ml:
-            ml_weight, rule_weight, confidence = 0.8, 0.2, 'HIGH'
+            weights = self.ensemble_weights or {
+                "ml": runtime_config.demand.ensemble_ml_weight_default,
+                "rule": 1.0 - runtime_config.demand.ensemble_ml_weight_default
+            }
+            ml_weight = weights.get("ml", runtime_config.demand.ensemble_ml_weight_default)
+            rule_weight = max(0.0, 1.0 - ml_weight)
+            confidence = 'HIGH' if ml_weight >= runtime_config.demand.ensemble_high_conf_threshold else 'MEDIUM'
         else:
             ml_weight, rule_weight, confidence = 0.0, 1.0, 'MEDIUM'
 
@@ -403,11 +567,23 @@ class HybridBrain:
         elif self.rules_metadata:
             combined_momentum = self.rules_metadata.get('combined', 0.0)
 
-        trend_factor = 1.0 + (combined_momentum * 0.1)
+        trend_factor = 1.0 + (combined_momentum * runtime_config.demand.trend_factor_scale)
         current_row = self.last_row.copy()
 
+        base_date = pd.Timestamp.now()
+        if self.last_date:
+            try:
+                base_date = pd.to_datetime(self.last_date)
+            except Exception:
+                base_date = pd.Timestamp.now()
+
+        smoothing_frac = runtime_config.demand.smoothing_max_change_fraction
+        min_qty = runtime_config.demand.min_prediction_quantity
+        weekend_dows = set(runtime_config.calendar.weekend_dows)
+        uncertainty_z = runtime_config.demand.forecast_uncertainty_z
+
         for i in range(days):
-            pred_date = pd.Timestamp.now() + pd.Timedelta(days=i + 1)
+            pred_date = base_date + pd.Timedelta(days=i + 1)
             features = self._prepare_feature_row(pred_date, current_row)
 
             ml_pred = features['roll_mean_7']
@@ -426,11 +602,11 @@ class HybridBrain:
 
             if i > 0:
                 prev_pred = predictions[-1]['predicted_quantity']
-                max_change = prev_pred * 0.3
+                max_change = prev_pred * smoothing_frac
                 final_pred = max(prev_pred - max_change, min(prev_pred + max_change, final_pred))
 
-            final_pred = max(1.0, round(final_pred, 1))
-            uncertainty = 1.64 * self.std_error
+            final_pred = max(min_qty, round(final_pred, 1))
+            uncertainty = uncertainty_z * self.std_error
             lower_bound = max(0, round(final_pred - uncertainty, 1))
             upper_bound = round(final_pred + uncertainty, 1)
 
@@ -441,7 +617,7 @@ class HybridBrain:
                 'upper_bound': upper_bound,
                 'confidence': confidence,
                 'day_of_week': pred_date.dayofweek,
-                'is_weekend': pred_date.dayofweek >= 5
+                'is_weekend': pred_date.dayofweek in weekend_dows
             })
 
             current_row['lag_1'] = final_pred
@@ -450,7 +626,23 @@ class HybridBrain:
             current_row['roll_mean_7'] = float(np.mean([p['predicted_quantity'] for p in predictions[max(0, i - 6):i + 1]]))
             current_row['day_of_week'] = pred_date.dayofweek
             current_row['day_of_month'] = pred_date.day
-            current_row['is_weekend'] = int(pred_date.dayofweek >= 5)
+            current_row['is_weekend'] = int(pred_date.dayofweek in weekend_dows)
+
+        # ✅ NEW: Sanity check - cap extreme deviations
+        pred_values = [p['predicted_quantity'] for p in predictions]
+        pred_mean = sum(pred_values) / len(pred_values) if pred_values else 0
+        baseline = self.last_row.get('roll_mean_7', pred_mean)
+        
+        if baseline > 0 and pred_mean > 0:
+            deviation = abs(pred_mean - baseline) / baseline
+            if deviation > 1.0:  # >100% deviation from recent average
+                logger.warning(f"Predictions deviate {deviation:.0%} from baseline ({baseline:.1f}), capping to ±50%...")
+                # Cap to ±50% of baseline
+                scale_factor = min(1.5, max(0.5, baseline / pred_mean))
+                for p in predictions:
+                    p['predicted_quantity'] = round(p['predicted_quantity'] * scale_factor, 1)
+                    p['lower_bound'] = max(0, round(p['lower_bound'] * scale_factor, 1))
+                    p['upper_bound'] = round(p['upper_bound'] * scale_factor, 1)
 
         validated = self._validate_predictions(predictions)
         pred_values = [p['predicted_quantity'] for p in validated] if validated else []
@@ -458,72 +650,84 @@ class HybridBrain:
             logger.info(f"Generated predictions: {pred_values}")
             logger.info(f"Prediction range: {min(pred_values):.1f} - {max(pred_values):.1f}")
         return validated
-
+    
     def get_recommendation(self) -> Dict:
-        """Generate business recommendation based on metrics"""
-        if not self.physics_metrics:
+        """
+        Generate stock recommendation based on current state
+        Returns basic recommendation for training validation
+        """
+        if not self.last_row:
             return {
-                'type': 'INSUFFICIENT_DATA',
-                'priority': 'LOW',
-                'message': 'Tidak cukup data untuk rekomendasi. Tambahkan minimal 7 hari data.'
+                'status': 'NO_DATA',
+                'message': 'Insufficient data for recommendation'
             }
-
-        burst_level = self.physics_metrics.get('burst', {}).get('level')
-        momentum_status = self.physics_metrics.get('momentum', {}).get('status')
-        combined_momentum = self.physics_metrics.get('momentum', {}).get('combined_momentum', 0.0)
-
-        if burst_level in ['CRITICAL', 'SIGNIFICANT']:
-            return {
-                'type': 'SCALE_UP',
-                'priority': 'CRITICAL' if burst_level == 'CRITICAL' else 'HIGH',
-                'message': f'VIRAL ALERT! Lonjakan {burst_level.lower()} terdeteksi. Tingkatkan produksi segera.',
-                'actions': [
-                    'Tingkatkan produksi 2-3x lipat',
-                    'Pastikan stok bahan baku mencukupi',
-                    'Siapkan tenaga kerja tambahan',
-                    'Manfaatkan momentum untuk promosi'
-                ]
-            }
-
-        if momentum_status in ['FALLING', 'DECLINING']:
-            momentum_pct = abs(combined_momentum * 100)
-            return {
-                'type': 'INTERVENTION',
-                'priority': 'HIGH' if momentum_status == 'FALLING' else 'MEDIUM',
-                'message': f'Penjualan turun {momentum_pct:.1f}%. Perlu strategi baru.',
-                'actions': [
-                    'Buat promo atau diskon terbatas',
-                    'Bundling dengan produk lain',
-                    'Tingkatkan aktivitas media sosial',
-                    'Cek kompetitor dan sesuaikan harga'
-                ]
-            }
-
+        
+        baseline = self.last_row.get('roll_mean_7', 0)
+        
+        # Simple recommendation based on momentum
+        momentum_status = 'STABLE'
+        if self.physics_metrics:
+            momentum_status = self.physics_metrics.get('momentum', {}).get('status', 'STABLE')
+        
         if momentum_status in ['TRENDING_UP', 'GROWING']:
-            momentum_pct = combined_momentum * 100
-            return {
-                'type': 'MAINTAIN',
-                'priority': 'MEDIUM',
-                'message': f'Penjualan naik {momentum_pct:.1f}%. Pertahankan momentum.',
-                'actions': [
-                    'Pertahankan kualitas produk',
-                    'Jaga konsistensi stok',
-                    'Tingkatkan engagement pelanggan',
-                    'Siapkan kapasitas untuk pertumbuhan'
-                ]
-            }
-
+            recommendation = f"Consider increasing stock by 20-30%. Current avg: {baseline:.1f} units/day"
+        elif momentum_status in ['FALLING', 'DECLINING']:
+            recommendation = f"Consider reducing stock by 10-20%. Current avg: {baseline:.1f} units/day"
+        else:
+            recommendation = f"Maintain current stock levels. Current avg: {baseline:.1f} units/day"
+        
         return {
-            'type': 'OPTIMIZE',
-            'priority': 'LOW',
-            'message': 'Penjualan stabil. Fokus pada efisiensi dan loyalitas pelanggan.',
-            'actions': [
-                'Optimalkan biaya operasional',
-                'Tingkatkan program loyalitas',
-                'Kumpulkan feedback pelanggan',
-                'Eksplorasi pasar baru'
-            ]
+            'status': momentum_status,
+            'message': recommendation,
+            'baseline': baseline
         }
+        
+    def save_model(self, product_id: str, model_path: str) -> bool:
+        """
+        Save trained model and metadata to disk
+        
+        Args:
+            product_id: Product identifier
+            model_path: Path to save the model file (.pkl)
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        if self.model is None and not self.is_trained_ml:
+            logger.error("No model to save")
+            return False
+        
+        try:
+            import pickle
+            
+            # Create directory if needed
+            os.makedirs(os.path.dirname(model_path), exist_ok=True)
+            
+            # Save using joblib (same as your load_model expects)
+            joblib.dump(self, model_path)
+            
+            # Save metadata separately
+            base, _ = os.path.splitext(model_path)
+            meta = {
+                "product_id": product_id,
+                "generated_at": datetime.now().isoformat(),
+                "mae": float(self.mae),
+                "baseline_mae": float(self.baseline_mae) if self.baseline_mae else None,
+                "std_error": float(self.std_error),
+                "physics_metrics": self.physics_metrics,
+                "ensemble_weights": self.ensemble_weights,
+                "recommendation": self.get_recommendation()
+            }
+            
+            with open(f"{base}_metadata.json", "w", encoding="utf-8") as f:
+                json.dump(meta, f, indent=2)
+            
+            logger.info(f"Model saved to {model_path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to save model: {e}", exc_info=True)
+            return False
 
     def _validate_predictions(self, predictions: List[Dict]) -> List[Dict]:
         """Validate and sanitize predictions"""
@@ -578,6 +782,30 @@ def save_model(product_id: str, output_path: str) -> bool:
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     brain: HybridBrain = state['brain']
+
+    def _extract_mae(state_obj) -> Optional[float]:
+        if isinstance(state_obj, HybridBrain):
+            return getattr(state_obj, "mae", None)
+        if isinstance(state_obj, dict):
+            return state_obj.get("mae")
+        return None
+
+    existing_mae: Optional[float] = None
+    if os.path.exists(output_path):
+        try:
+            existing_state = joblib.load(output_path)
+            existing_mae = _extract_mae(existing_state)
+        except Exception as e:
+            logger.warning(f"Could not load existing model for comparison: {e}")
+
+    new_mae = brain.mae
+    if existing_mae is not None and new_mae is not None and new_mae >= existing_mae:
+        logger.info(
+            f"Skip saving model {product_id}: new MAE {new_mae:.4f} "
+            f"is not better than existing {existing_mae:.4f}"
+        )
+        return False
+
     joblib.dump(brain, output_path)
 
     base, _ = os.path.splitext(output_path)

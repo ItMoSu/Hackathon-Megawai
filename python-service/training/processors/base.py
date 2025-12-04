@@ -45,6 +45,7 @@ class BaseFileProcessor(IFileProcessor, ABC):
             date_col = self.column_detector.detect_date_column(df)
             quantity_col = self.column_detector.detect_quantity_column(df)
             product_col = self.column_detector.detect_product_column(df)
+            price_col = self.column_detector.detect_price_column(df)
 
             if not date_col or not quantity_col:
                 raise ColumnDetectionError(
@@ -52,7 +53,9 @@ class BaseFileProcessor(IFileProcessor, ABC):
                     f"Date: {date_col}, Quantity: {quantity_col}"
                 )
 
-            logger.info(f"Detected columns - Date: '{date_col}', Quantity: '{quantity_col}', Product: '{product_col}'")
+            logger.info(
+                f"Detected columns - Date: '{date_col}', Quantity: '{quantity_col}', Product: '{product_col}', Price: '{price_col}'"
+            )
 
             # Step 3: Standardize data
             # Fallback product id from filename (sanitized)
@@ -60,7 +63,7 @@ class BaseFileProcessor(IFileProcessor, ABC):
             fallback_product = fallback_product.replace(" ", "_").lower()
 
             standardized = self._standardize_dataframe(
-                df, date_col, quantity_col, product_col, fallback_product
+                df, date_col, quantity_col, product_col, fallback_product, price_col=price_col
             )
 
             if not standardized:
@@ -88,7 +91,8 @@ class BaseFileProcessor(IFileProcessor, ABC):
         date_col: str,
         quantity_col: str,
         product_col: Optional[str],
-        fallback_product: str
+        fallback_product: str,
+        price_col: Optional[str] = None
     ) -> Optional[Dict[str, pd.DataFrame]]:
         '''Standardize dataframe to common format'''
 
@@ -107,6 +111,11 @@ class BaseFileProcessor(IFileProcessor, ABC):
                 if product_col and product_col in row:
                     record['product'] = str(row[product_col]).strip()
 
+                if price_col and price_col in row:
+                    price_idr = self.data_cleaner.clean_price_to_idr(row[price_col])
+                    if price_idr is not None:
+                        record['price_idr'] = price_idr
+
                 cleaned_records.append(record)
 
         if not cleaned_records:
@@ -114,6 +123,25 @@ class BaseFileProcessor(IFileProcessor, ABC):
             return None
 
         output_df = pd.DataFrame(cleaned_records)
+        
+        # ✅ ADD THIS: Aggregate per hari SEBELUM group by product
+        # Group by date and sum quantities (handle multiple orders per day)
+        if 'product' in output_df.columns:
+            # Aggregate per product per day
+            agg_dict = {'quantity': 'sum'}
+            if 'price_idr' in output_df.columns:
+                agg_dict['price_idr'] = 'mean'  # Average price per day
+            
+            output_df = output_df.groupby(['date', 'product']).agg(agg_dict).reset_index()
+            logger.info(f"Aggregated to {len(output_df)} unique date-product combinations")
+        else:
+            # Single product - aggregate per date only
+            agg_dict = {'quantity': 'sum'}
+            if 'price_idr' in output_df.columns:
+                agg_dict['price_idr'] = 'mean'
+            
+            output_df = output_df.groupby('date').agg(agg_dict).reset_index()
+            logger.info(f"Aggregated to {len(output_df)} unique dates")
 
         # Group by product if multiple products
         if 'product' in output_df.columns:
@@ -125,18 +153,51 @@ class BaseFileProcessor(IFileProcessor, ABC):
             warn_count = 0
             warn_suppressed = 0
             for product in products:
-                product_df = output_df[output_df['product'] == product][['date', 'quantity']]
+                cols = ['date', 'quantity']
+                if 'price_idr' in output_df.columns:
+                    cols.append('price_idr')
+                product_df = output_df[output_df['product'] == product][cols]
                 product_df = product_df.sort_values('date').reset_index(drop=True)
+                # --------------------------------------------------------------
+                # ✅ NEW: Interpolate missing dates (per-product)
+                # --------------------------------------------------------------
+                if 'date' in product_df.columns:
+                    date_range = pd.date_range(
+                        product_df['date'].min(),
+                        product_df['date'].max(),
+                        freq='D'
+                    )
+
+                    gap_count = len(date_range) - len(product_df)
+                    gap_pct = gap_count / len(date_range) * 100
+
+                    if gap_pct > 15:  # only fill if gaps > 15%
+                        logger.info(f"[{product}] Filling {gap_count} gaps ({gap_pct:.1f}%)")
+
+                        # Create full date frame
+                        complete_df = pd.DataFrame({'date': date_range})
+                        product_df = complete_df.merge(product_df, on='date', how='left')
+
+                        # quantity → ffill + bfill
+                        product_df['quantity'] = (
+                            product_df['quantity']
+                            .fillna(method='ffill')
+                            .fillna(method='bfill')
+                        )
+
+                        # price only ffill
+                        if 'price_idr' in product_df.columns:
+                            product_df['price_idr'] = product_df['price_idr'].fillna(method='ffill')
 
                 # Remove outliers
                 product_df = self.data_cleaner.remove_outliers(product_df)
 
                 if self.validator.validate_dataframe(product_df):
                     results[product] = product_df
-                    logger.info(f"  ✓ {product}: {len(product_df)} days")
+                    logger.info(f"  ✓ {product}: {len(product_df)} days, qty range: {product_df['quantity'].min():.1f}-{product_df['quantity'].max():.1f}")
                 else:
                     if warn_count < warn_limit:
-                        logger.warning(f"  Invalid {product}: {self.validator.get_validation_errors()}")
+                        logger.warning(f"  Invalid {product}: {self.validator.get_validation_errors()}")        
                         warn_count += 1
                     else:
                         warn_suppressed += 1
@@ -147,11 +208,14 @@ class BaseFileProcessor(IFileProcessor, ABC):
             return results if results else None
 
         # Single product fallback uses filename instead of "default"
-        output_df = output_df[['date', 'quantity']].sort_values('date').reset_index(drop=True)
+        cols = ['date', 'quantity']
+        if 'price_idr' in output_df.columns:
+            cols.append('price_idr')
+        output_df = output_df[cols].sort_values('date').reset_index(drop=True)
         output_df = self.data_cleaner.remove_outliers(output_df)
 
         if self.validator.validate_dataframe(output_df):
-            logger.info(f"✓ Single product: {len(output_df)} days")
+            logger.info(f"✓ Single product: {len(output_df)} days, qty range: {output_df['quantity'].min():.1f}-{output_df['quantity'].max():.1f}")
             return {fallback_product: output_df}
 
         logger.warning(f"✗ Validation failed: {self.validator.get_validation_errors()}")

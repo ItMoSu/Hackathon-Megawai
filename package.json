@@ -1,9 +1,0 @@
-{
-  "devDependencies": {
-    "ts-node": "^10.9.2"
-  },
-  "dependencies": {
-    "jose": "^6.1.2",
-    "jwks-rsa": "^3.2.0"
-  }
-}
