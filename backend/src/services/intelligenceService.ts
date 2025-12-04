@@ -1,5 +1,7 @@
 import axios from 'axios';
 import { getCalendarFactors } from '../../lib/analytics/calendar';
+import { getSalesData } from '../../lib/database/queries';
+import { prisma } from '../../lib/database/schema';
 
 export type SalesPoint = { date: Date | string; quantity: number; productName?: string };
 
@@ -288,6 +290,49 @@ class IntelligenceService {
             modelAgreement: aiResult.agreement_score || 0.8
         }
     };
+  }
+
+  // --- GET TRENDING PRODUCTS ---
+  async getTrendingProducts(userId: string): Promise<{ productId: string; productName: string; burstScore: number; severity: string; lastUpdated: string }[]> {
+    try {
+      // Fetch all products for the user
+      const products = await prisma.products.findMany({
+        where: { user_id: String(userId) },
+        select: { id: true, name: true },
+      });
+
+      const trendingProducts: { productId: string; productName: string; burstScore: number; severity: string; lastUpdated: string }[] = [];
+
+      // Analyze each product for burst/surge
+      for (const product of products) {
+        try {
+          const salesData = await getSalesData(String(userId), product.id, 30); // Last 30 days for recent trends
+          if (salesData.length >= 5) { // Minimum data for burst detection
+            const burst = this.detectBurst(salesData);
+            if (burst.severity === 'HIGH' || burst.severity === 'CRITICAL') {
+              trendingProducts.push({
+                productId: product.id,
+                productName: product.name || 'Unknown Product',
+                burstScore: burst.score,
+                severity: burst.severity,
+                lastUpdated: new Date().toISOString(),
+              });
+            }
+          }
+        } catch (error) {
+          console.error(`Error analyzing product ${product.id}:`, error);
+          // Continue with other products
+        }
+      }
+
+      // Sort by burst score descending (highest surges first)
+      trendingProducts.sort((a, b) => b.burstScore - a.burstScore);
+
+      return trendingProducts;
+    } catch (error) {
+      console.error('Error getting trending products:', error);
+      return [];
+    }
   }
 }
 

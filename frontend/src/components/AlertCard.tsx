@@ -47,7 +47,7 @@ export function AlertCard({ productName, score, level, onDismiss }: AlertCardPro
             </div>
             
             <h4 className="font-bold text-lg">
-              Lonjakan Tidak Wajar: {productName}
+              Ada Lonjakan Product: {productName}
             </h4>
             
             <p className="text-sm mt-1 opacity-90 leading-relaxed">
