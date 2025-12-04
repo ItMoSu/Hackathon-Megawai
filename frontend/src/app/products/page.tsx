@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select'; 
 import { Badge } from '@/components/ui/Badge';
 import { TrendChart } from '@/components/TrendChart';
+import Navbar from '@/components/ui/Navbar';
 
 const UNIT_OPTIONS = [
   { value: 'pcs', label: 'Pcs' },
@@ -55,16 +56,13 @@ export default function ProductsPage() {
           router.push('/login');
           return;
         }
-        // ------------------------
-
-        // Gunakan Backticks (`) bukan single quote (') agar variable ${userId} terbaca!
+        
         const res = await fetch(`http://localhost:5000/api/products?user_id=${userId}`, {
           headers: getAuthHeaders() 
         });
 
         if (res.status === 401) {
-          // Token expired atau tidak valid
-          localStorage.removeItem('token'); // Bersihkan token rusak
+          localStorage.removeItem('token'); 
           router.push('/login'); 
           return;
         }
@@ -131,6 +129,7 @@ export default function ProductsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
+      <Navbar />
       <div className="max-w-7xl mx-auto space-y-8">
         
         <div className="flex justify-between items-center">
@@ -211,7 +210,6 @@ export default function ProductsPage() {
               </div>
             )}
           </div>
-
         </div>
       </div>
     </div>

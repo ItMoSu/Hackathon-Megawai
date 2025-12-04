@@ -1,4 +1,1 @@
-"""
-Model package for ML forecasting components.
-"""
-
+# Models package initializer

@@ -1,0 +1,38 @@
+{
+  "product_id": "4761a179-3eec-433c-b355-2c95f469a0e6",
+  "generated_at": "2025-12-04T00:55:59.837563",
+  "physics_metrics": {
+    "momentum": {
+      "momentum7": -0.557204155476329,
+      "momentum14": 0.04067423832276266,
+      "momentum30": -0.20695802996082893,
+      "combined": -0.3077914122335015,
+      "combined_momentum": -0.3077914122335015,
+      "status": "FALLING"
+    },
+    "burst": {
+      "actual": 2.0,
+      "expected": 18.516616465863457,
+      "burst_score": -0.8379734073022352,
+      "level": "NORMAL",
+      "burst_type": "NORMAL",
+      "factors": {
+        "baseline": 20.3,
+        "dow": 0.7931726907630523,
+        "payday": 1.15
+      }
+    },
+    "priority_score": -0.21545398856345102
+  },
+  "recommendation": {
+    "type": "INTERVENTION",
+    "priority": "HIGH",
+    "message": "Penjualan turun 30.8%. Perlu strategi baru.",
+    "actions": [
+      "Buat promo atau diskon terbatas",
+      "Bundling dengan produk lain",
+      "Tingkatkan aktivitas media sosial",
+      "Cek kompetitor dan sesuaikan harga"
+    ]
+  }
+}

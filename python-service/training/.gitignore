@@ -1,0 +1,10 @@
+datasets/*
+!datasets/.gitkeep
+preprocessed/*
+!preprocessed/.gitkeep
+models_output/*
+!models_output/.gitkeep
+logs/*.log
+__pycache__/
+*.pyc
+.DS_Store

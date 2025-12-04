@@ -78,4 +78,24 @@ router.post('/train/:productId', async (req, res) => {
   }
 });
 
+router.get('/trending', async (req, res) => {
+  try {
+    const userId = req.user?.sub;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'User tidak terotentikasi' });
+    }
+
+    const trendingProducts = await intelligenceService.getTrendingProducts(String(userId));
+
+    return res.json({ success: true, data: trendingProducts });
+  } catch (error) {
+    console.error('trending route error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Gagal mendapatkan produk trending',
+    });
+  }
+});
+
 export default router;
