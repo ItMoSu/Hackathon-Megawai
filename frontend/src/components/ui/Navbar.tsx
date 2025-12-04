@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, ShoppingBag, LayoutDashboard, User } from "lucide-react";
+import { Menu, X, ShoppingBag } from "lucide-react";
 
 const navLinks = [
 { name: "Home", href: "/" },
