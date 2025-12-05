@@ -100,7 +100,7 @@ export async function upsertProductsForDataset(
   userId: string,
   datasetId: string,
   products: { name: string; category?: string | null; unit?: string | null }[],
-): Promise<Product[]> {
+): Promise<any[]> {
   try {
     if (!userId) {
       throw new Error('userId is required')
@@ -148,8 +148,8 @@ export async function upsertProductsForDataset(
       },
     })
 
-    const existingByName = new Map<string, Product>(
-      existingProducts.map((product: Product) => [product.name, product]),
+    const existingByName = new Map<string, any>(
+      existingProducts.map((product: any) => [product.name, product]),
     )
 
     const operations = productNames.map((name) => {
@@ -248,8 +248,8 @@ export async function bulkUpsertSales(
         },
       })
 
-      const existingByName = new Map<string, Product>(
-        existingProducts.map((product: Product) => [product.name, product]),
+      const existingByName = new Map<string, any>(
+        existingProducts.map((product: any) => [product.name, product]),
       )
 
       const missingNames = productNames.filter((name) => !existingByName.has(name))
@@ -273,7 +273,7 @@ export async function bulkUpsertSales(
       })
 
       const productIdByName = new Map<string, string>(
-        productsForRows.map((product: Product) => [product.name, product.id]),
+        productsForRows.map((product: any) => [product.name, product.id]),
       )
 
       for (const row of rows) {
@@ -321,7 +321,7 @@ export async function getAnalyticsOverview(
   userId: string,
   datasetId: string,
   range: DateRange,
-): Promise<DailyAnalytics[]> {
+): Promise<any[]> {
   try {
     if (!userId) {
       throw new Error('userId is required')
@@ -364,7 +364,7 @@ export async function getProductAnalytics(
   datasetId: string,
   productId: string,
   range: DateRange,
-): Promise<DailyAnalytics[]> {
+): Promise<any[]> {
   try {
     if (!userId) {
       throw new Error('userId is required')
@@ -549,7 +549,7 @@ export async function getSalesData(
 export async function getLatestAnalytics(
   userId: string,
   productId: string
-): Promise<DailyAnalytics | null> {
+): Promise<any | null> {
   try {
     if (!userId) throw new Error('userId is required');
     if (!productId) throw new Error('productId is required');
@@ -579,7 +579,7 @@ export async function getTopProductsByPriority(
   userId: string,
   limit: number = 10,
   datasetId?: string | null
-): Promise<DailyAnalytics[]> {
+): Promise<any[]> {
   try {
     if (!userId) throw new Error('userId is required');
 
@@ -646,7 +646,7 @@ export async function getProductsWithBurstAlerts(
   userId: string,
   minBurstLevel: string = 'HIGH',
   datasetId?: string | null
-): Promise<DailyAnalytics[]> {
+): Promise<any[]> {
   try {
     if (!userId) throw new Error('userId is required');
 
@@ -781,7 +781,7 @@ export async function bulkUpsertDailyAnalytics(
 export async function getUserProducts(
   userId: string,
   datasetId?: string | null
-): Promise<Product[]> {
+): Promise<any[]> {
   try {
     if (!userId) throw new Error('userId is required');
 
