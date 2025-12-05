@@ -33,21 +33,23 @@ export const createSalesEntry = async (req: Request, res: Response) => {
 
     // 1. Get or create dataset
     if (!dataset_id) {
-      const userDataset = await prisma.datasets.findFirst({
-        where: { user_id: userId },
-        orderBy: { created_at: 'desc' }
+      // dataset khusus untuk manual input
+      let targetDataset = await prisma.datasets.findFirst({
+        where: { 
+          user_id: userId,
+          source_file_type: 'manual'
+        }
       });
       
-      if (userDataset) {
-        dataset_id = userDataset.id;
+      if (targetDataset) {
+        dataset_id = targetDataset.id;
       } else {
-        // Create default dataset for user
         const newDataset = await prisma.datasets.create({
           data: {
             user_id: userId,
-            name: 'Default Dataset',
-            source_file_name: 'manual_input',
-            source_file_type: 'manual',
+            name: 'Manual_Input_Sales', 
+            source_file_name: 'manual_entry',
+            source_file_type: 'manual', 
             storage_path: '',
             status: 'active'
           }

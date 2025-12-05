@@ -94,146 +94,164 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 text-slate-900 selection:bg-red-600 selection:text-white">
       <Navbar />
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        
-        {/* Header */}
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard Overview</h1>
-            <p className="text-sm text-gray-500">Pantau performa harian & deteksi anomali.</p>
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-8">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-gray-900">Dashboard Overview</h1>
+              <p className="text-sm text-gray-500 mt-1">
+                Pantau performa harian & deteksi anomali penjualan.
+              </p>
+            </div>
+            <Button onClick={fetchSummary} variant="outline" size="sm" className="bg-white shadow-sm">
+              Refresh Data
+            </Button>
           </div>
-          <Button onClick={fetchSummary} variant="outline" size="sm">Refresh Data</Button>
-        </div>
 
-        {/* --- BAGIAN 1: SUMMARY CARDS (Revenue, Sales, Comparison) --- */}
-        {summary && (
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Pendapatan (Hari Ini)</CardTitle>
-                <span className="text-gray-500 font-bold">Rp</span>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{formatRupiah(summary.today.total_revenue)}</div>
-                <p className={`text-xs flex items-center mt-1 ${summary.changes.revenue_change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {summary.changes.revenue_change >= 0 ? <ArrowUpRight className="h-4 w-4 mr-1"/> : <ArrowDownRight className="h-4 w-4 mr-1"/>}
-                  {Math.abs(summary.changes.revenue_change).toFixed(1)}% dari kemarin
-                </p>
-              </CardContent>
-            </Card>
+          {/* --- KPI SUMMARY CARDS --- */}
+          {summary && (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Pendapatan</CardTitle>
+                  <span className="text-gray-500 font-bold text-xs">IDR</span>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{formatRupiah(summary.today.total_revenue)}</div>
+                  <p className={`text-xs flex items-center mt-1 font-medium ${summary.changes.revenue_change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {summary.changes.revenue_change >= 0 ? <ArrowUpRight className="h-4 w-4 mr-1" /> : <ArrowDownRight className="h-4 w-4 mr-1" />}
+                    {Math.abs(summary.changes.revenue_change).toFixed(1)}% dari kemarin
+                  </p>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Item Terjual</CardTitle>
-                <span className="text-gray-500 font-bold">Qty</span>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{summary.today.total_quantity} pcs</div>
-                <p className={`text-xs flex items-center mt-1 ${summary.changes.quantity_change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {summary.changes.quantity_change >= 0 ? <ArrowUpRight className="h-4 w-4 mr-1"/> : <ArrowDownRight className="h-4 w-4 mr-1"/>}
-                  {Math.abs(summary.changes.quantity_change).toFixed(1)}% dari kemarin
-                </p>
-              </CardContent>
-            </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Item Terjual</CardTitle>
+                  <span className="text-gray-500 font-bold text-xs">QTY</span>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{summary.today.total_quantity} pcs</div>
+                  <p className={`text-xs flex items-center mt-1 font-medium ${summary.changes.quantity_change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {summary.changes.quantity_change >= 0 ? <ArrowUpRight className="h-4 w-4 mr-1" /> : <ArrowDownRight className="h-4 w-4 mr-1" />}
+                    {Math.abs(summary.changes.quantity_change).toFixed(1)}% dari kemarin
+                  </p>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Transaksi</CardTitle>
-                <span className="text-gray-500 font-bold">#</span>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{summary.today.sales_count}</div>
-                <p className="text-xs text-gray-500 mt-1">Transaksi berhasil hari ini</p>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Transaksi</CardTitle>
+                  <span className="text-gray-500 font-bold text-xs">TRX</span>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{summary.today.sales_count}</div>
+                  <p className="text-xs text-gray-500 mt-1">Transaksi berhasil hari ini</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
-        {/* --- BAGIAN 2: BURST ALERT (MERAH) --- */}
-        {summary?.burst_alerts && summary.burst_alerts.length > 0 && (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md shadow-sm animate-pulse">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <AlertTriangle className="h-5 w-5 text-red-500" />
-              </div>
-              <div className="ml-3 w-full">
-                <h3 className="text-sm font-medium text-red-800">
-                  BURST ALERT DETECTED!
-                </h3>
-                <div className="mt-2 text-sm text-red-700">
-                  {summary.burst_alerts.map((alert) => (
-                    <div key={alert.product_id} className="flex justify-between items-center mb-1">
-                      <span>
-                        Produk <strong>{alert.product_name}</strong> mengalami lonjakan permintaan (Level: {alert.burst_level})!
-                      </span>
-                      <Button 
-                        size="sm" 
-                        variant="primary" 
-                        className="h-7 text-xs"
-                        onClick={() => setSelectedId(alert.product_id)} // Klik alert langsung buka detail
-                      >
-                        Lihat Analisa
-                      </Button>
-                    </div>
-                  ))}
+          {/* --- BURST ALERT SECTION --- */}
+          {summary?.burst_alerts && summary.burst_alerts.length > 0 && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4 shadow-sm animate-pulse">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="text-sm font-bold text-red-900">BURST ALERT DETECTED!</h3>
+                  <div className="mt-2 flex flex-col gap-2">
+                    {summary.burst_alerts.map((alert) => (
+                      <div key={alert.product_id} className="flex flex-wrap items-center justify-between gap-2 text-sm bg-white/60 p-2 rounded border border-red-100">
+                        <span className="text-red-800">
+                          Produk <strong>{alert.product_name}</strong> mengalami lonjakan (Level: {alert.burst_level})
+                        </span>
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs bg-red-600 hover:bg-red-700 text-white border-0"
+                          onClick={() => setSelectedId(alert.product_id)}
+                        >
+                          Lihat Analisa
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <div className="grid grid-cols-12 gap-6">
-          {/* List Produk (Sidebar) */}
-          <Card className="col-span-12 md:col-span-3 h-fit">
-            <CardHeader>
-              <h3 className="text-lg font-semibold">Semua Produk</h3>
-            </CardHeader>
-            <CardContent className="space-y-2 max-h-[500px] overflow-y-auto">
-               {/* --- BAGIAN 3: QUICK RANKING (Dari Summary API) --- */}
-               {summary?.top_products && (
-                <div className="mb-4 pb-4 border-b border-gray-100">
-                  <p className="text-xs font-bold text-gray-400 uppercase mb-2">Top 3 Hari Ini</p>
-                  {summary.top_products.slice(0, 3).map((top, idx) => (
-                    <div key={top.product_id} className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-700 font-medium">#{idx+1} {top.product_name}</span>
-                      <span className="text-gray-500">{top.quantity} sold</span>
+          {/* --- MAIN CONTENT GRID (SIDEBAR + CHART) --- */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
+            
+            {/* Sidebar List Produk */}
+            <Card className="lg:col-span-3 lg:sticky lg:top-6 shadow-sm">
+              <CardHeader className="pb-3 border-b border-gray-100">
+                <h3 className="text-base font-semibold text-gray-900">List Produk</h3>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="max-h-[600px] overflow-y-auto p-4 space-y-4">
+                  
+                  {/* Quick Ranking */}
+                  {summary?.top_products && (
+                    <div>
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Top 3 Hari Ini</p>
+                      <div className="space-y-2">
+                        {summary.top_products.slice(0, 3).map((top, idx) => (
+                          <div key={top.product_id} className="flex justify-between items-center text-sm p-2 bg-gray-50 rounded border border-gray-100">
+                            <span className="font-medium text-gray-700 truncate w-32">
+                              #{idx + 1} {top.product_name}
+                            </span>
+                            <Badge variant="secondary" className="text-xs font-normal">
+                              {top.quantity} sold
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  ))}
+                  )}
+
+                  {/* All Products */}
+                  <div>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Semua Produk</p>
+                    <div className="space-y-1">
+                      {products.map((p) => (
+                        <button
+                          key={p.id}
+                          onClick={() => setSelectedId(p.id)}
+                          className={`w-full text-left px-3 py-2 rounded-md text-sm transition-all duration-200 ${
+                            selectedId === p.id
+                              ? "bg-red-50 text-red-700 font-medium border border-red-200 shadow-sm"
+                              : "hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                          }`}
+                        >
+                          {p.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Intelligence Dashboard View */}
+            <div className="lg:col-span-9">
+              {selectedId ? (
+                <IntelligenceDashboard productId={selectedId} />
+              ) : (
+                <div className="flex h-[400px] items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 text-center">
+                  <div className="flex flex-col items-center">
+                    <TrendingUp className="h-10 w-10 text-gray-300 mb-3" />
+                    <h3 className="text-lg font-medium text-gray-900">Belum ada produk dipilih</h3>
+                    <p className="text-sm text-gray-500">Pilih produk dari sidebar untuk melihat detail analisa.</p>
+                  </div>
                 </div>
               )}
-
-              {/* Full List */}
-              <p className="text-xs font-bold text-gray-400 uppercase mb-2">Daftar Lengkap</p>
-              {products.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => setSelectedId(p.id)}
-                  className={`w-full text-left px-3 py-2 rounded text-sm transition ${
-                    selectedId === p.id 
-                      ? "bg-blue-50 text-blue-700 font-medium border border-blue-200" 
-                      : "hover:bg-gray-100 text-gray-700"
-                  }`}
-                >
-                  {p.name}
-                </button>
-              ))}
-            </CardContent>
-          </Card>
-
-          {/* Main Intelligence View */}
-          <div className="col-span-12 md:col-span-9">
-            {selectedId ? (
-              <IntelligenceDashboard productId={selectedId} />
-            ) : (
-              <Card className="h-full flex items-center justify-center p-10">
-                <p className="text-gray-400">Pilih produk untuk melihat detail.</p>
-              </Card>
-            )}
+            </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

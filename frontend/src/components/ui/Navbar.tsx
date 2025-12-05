@@ -12,7 +12,6 @@ const navLinks = [
 { name: "Dashboard", href: "/dashboard" },
 { name: "Input Data", href: "/input" },
 { name: "Reports", href: "/reports" },
-{ name: "Halo", href: "/reports" },
 ];
 
 export default function Navbar() {

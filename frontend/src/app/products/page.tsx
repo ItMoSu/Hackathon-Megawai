@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
 import { TrendChart } from '@/components/TrendChart';
 import Navbar from '@/components/ui/Navbar';
+import { Package, Plus, TrendingUp, PackageOpen } from "lucide-react";
 
 const UNIT_OPTIONS = [
   { value: 'pcs', label: 'Pcs' },
@@ -128,40 +129,54 @@ export default function ProductsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <Navbar />
-      <div className="max-w-7xl mx-auto space-y-8">
-        
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900">Manajemen Produk</h1>
-          <Badge variant="outline" className="text-sm px-3 py-1">
-            Total: {products.length} Produk
+  <div className="min-h-screen bg-gray-50 text-slate-900 selection:bg-red-600 selection:text-white">
+    {/* 1. Navbar */}
+    <Navbar />
+    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Manajemen Produk</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Kelola katalog menu, harga, dan satuan unit.
+            </p>
+          </div>
+          <Badge variant="outline" className="w-fit px-4 py-2 text-sm font-medium bg-white shadow-sm border-gray-200">
+            <Package className="w-4 h-4 mr-2 text-red-600" />
+            Total: <span className="ml-1 font-bold text-gray-900">{products.length} Item</span>
           </Badge>
         </div>
-
-        <div className="w-full">
-          <TrendChart />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          <div className="lg:col-span-1">
-            <Card className="sticky top-8">
+        <Card className="border-none shadow-sm ring-1 ring-gray-200">
+          <CardHeader className="pb-2 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-gray-500" />
+                <h3 className="font-semibold text-gray-700">Tren Penambahan Produk</h3>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <TrendChart />
+          </CardContent>
+        </Card>
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 items-start">
+          <div className="lg:col-span-4">
+            <Card className="sticky top-8 border-t-4 border-t-red-600 shadow-md">
               <CardHeader>
-                <h2 className="text-xl font-bold">Tambah Baru</h2>
+                <h2 className="text-lg font-bold flex items-center gap-2">
+                  <Plus className="w-5 h-5 text-red-600" />
+                  Tambah Baru
+                </h2>
                 <p className="text-sm text-gray-500">Daftarkan menu jualanmu di sini.</p>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  
+                <form onSubmit={handleSubmit} className="space-y-5">
                   <Input 
                     label="Nama Produk" 
                     placeholder="Contoh: Ayam Bakar Madu"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     error={!name && error ? error : ''}
+                    className="focus:ring-red-500" // Optional styling
                   />
-
                   <Select 
                     label="Satuan (Unit)" 
                     options={UNIT_OPTIONS}
@@ -169,10 +184,9 @@ export default function ProductsPage() {
                     onChange={(e) => setUnit(e.target.value)}
                     error={!unit && error ? "Pilih satuan unit" : ''}
                   />
-
                   <Button 
                     type="submit" 
-                    className="w-full mt-2" 
+                    className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 shadow-sm transition-all" 
                     isLoading={isSubmitting}
                   >
                     + Simpan Produk
@@ -181,27 +195,41 @@ export default function ProductsPage() {
               </CardContent>
             </Card>
           </div>
-
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-8">
             {loading ? (
-              <div className="text-center py-10 text-gray-500">Memuat data...</div>
+              <div className="flex flex-col items-center justify-center py-20 bg-white rounded-lg border border-gray-200">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mb-4"></div>
+                <p className="text-gray-500 text-sm">Sedang memuat data katalog...</p>
+              </div>
             ) : products.length === 0 ? (
-              <div className="border-2 border-dashed border-gray-300 rounded-xl p-10 text-center bg-white">
-                <p className="text-gray-500 mb-2">Belum ada produk tersimpan.</p>
-                <p className="text-sm text-gray-400">Yuk tambah produk pertamamu di form sebelah kiri!</p>
+              <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50/50 p-12 text-center">
+                <div className="bg-white p-4 rounded-full shadow-sm mb-4">
+                  <PackageOpen className="h-10 w-10 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Belum ada produk</h3>
+                <p className="text-sm text-gray-500 max-w-sm mt-1 mb-6">
+                  Katalogmu masih kosong. Mulai tambahkan produk pertamamu melalui formulir di sebelah kiri.
+                </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {products.map((product) => (
-                  <Card key={product.id} className="hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-primary">
-                    <CardContent className="p-5 flex justify-between items-start">
-                      <div>
-                        <h3 className="font-bold text-lg text-gray-800">{product.name}</h3>
-                        <p className="text-xs text-gray-400 mt-1 uppercase tracking-wider">
-                          ID: {product.id.split('-')[0]}...
+                  <Card 
+                    key={product.id} 
+                    className="group relative overflow-hidden transition-all duration-200 hover:shadow-md hover:border-red-200 cursor-pointer bg-white"
+                  >
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-gray-200 group-hover:bg-red-500 transition-colors" />
+                    
+                    <CardContent className="p-5 pl-7 flex justify-between items-start">
+                      <div className="space-y-1">
+                        <h3 className="font-bold text-gray-800 group-hover:text-red-700 transition-colors line-clamp-1">
+                          {product.name}
+                        </h3>
+                        <p className="text-[10px] font-mono text-gray-400 uppercase tracking-wider bg-gray-50 w-fit px-1 rounded">
+                          ID: {product.id.split('-')[0]}
                         </p>
                       </div>
-                      <Badge variant="secondary" className="uppercase text-xs">
+                      <Badge variant="secondary" className="bg-gray-100 text-gray-600 border border-gray-200 group-hover:bg-white">
                         {product.unit}
                       </Badge>
                     </CardContent>
@@ -212,6 +240,7 @@ export default function ProductsPage() {
           </div>
         </div>
       </div>
-    </div>
-  );
+    </main>
+  </div>
+);
 }

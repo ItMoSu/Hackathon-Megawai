@@ -32,8 +32,7 @@ export default function ReportsPage() {
   if (!report) return <div className="p-8 text-center">Gagal memuat laporan.</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-    <Navbar />
+<div className="min-h-screen bg-gray-50 text-slate-900 selection:bg-red-600 selection:text-white">    <Navbar />
       <div className="max-w-5xl mx-auto space-y-8">
         
         {/* Header */}
