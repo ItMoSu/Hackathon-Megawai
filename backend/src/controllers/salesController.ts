@@ -37,7 +37,7 @@ export const createSalesEntry = async (req: Request, res: Response) => {
       let targetDataset = await prisma.datasets.findFirst({
         where: { 
           user_id: userId,
-          source_file_type: 'manual'
+          source_file_type: 'csv'
         }
       });
       
@@ -49,7 +49,7 @@ export const createSalesEntry = async (req: Request, res: Response) => {
             user_id: userId,
             name: 'Manual_Input_Sales', 
             source_file_name: 'manual_entry',
-            source_file_type: 'manual', 
+            source_file_type: 'csv', 
             storage_path: '',
             status: 'active'
           }
