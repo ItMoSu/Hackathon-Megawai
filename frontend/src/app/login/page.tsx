@@ -11,7 +11,7 @@ export default function AuthPage() {
   const router = useRouter();
 
   const [mode, setMode] = useState<"login" | "register">("login");
-  const [email, setEmail] = useState("test@admin.com");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
@@ -65,7 +65,7 @@ export default function AuthPage() {
       const res = await fetch("http://localhost:5000/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, name }),
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await res.json();
