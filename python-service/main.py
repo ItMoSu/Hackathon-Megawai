@@ -130,6 +130,25 @@ class HybridForecastRequest(BaseModel):
         return v
 
 
+class UniversalPredictRequest(BaseModel):
+    """Request model for universal prediction endpoint"""
+    sales_data: List[Dict]
+    forecast_days: int = 7
+    product_id: Optional[str] = None
+
+    @validator('forecast_days')
+    def validate_forecast_days(cls, v):
+        if v < 1 or v > 30:
+            raise ValueError('forecast_days must be between 1 and 30')
+        return v
+
+    @validator('sales_data')
+    def validate_sales_data(cls, v):
+        if not v or len(v) < 3:
+            raise ValueError('sales_data must have at least 3 data points')
+        return v
+
+
 @app.get("/")
 def root():
     return {
@@ -299,6 +318,224 @@ def get_forecast(productId: str, days: int = Query(7, ge=1, le=30)):
     except Exception as e:
         logger.error(f"Forecast error for {productId}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/ml/predict-universal")
+def predict_universal(request: UniversalPredictRequest):
+    """
+    Universal prediction endpoint - works with any sales data without pre-trained model.
+    Uses physics-based prediction with on-the-fly training.
+
+    This is the main endpoint used by the backend for product analysis.
+    """
+    try:
+        sales_data = request.sales_data
+        forecast_days = request.forecast_days
+        product_id = request.product_id or "universal"
+
+        logger.info(f"Universal predict: {len(sales_data)} data points, {forecast_days} days forecast")
+
+        # Validate and clean sales data
+        if not sales_data:
+            raise HTTPException(status_code=400, detail="sales_data cannot be empty")
+
+        # Convert to DataFrame format expected by HybridBrain
+        import pandas as pd
+        try:
+            df = pd.DataFrame(sales_data)
+            if 'date' not in df.columns or 'quantity' not in df.columns:
+                raise HTTPException(
+                    status_code=400,
+                    detail="sales_data must contain 'date' and 'quantity' fields"
+                )
+
+            # Ensure proper types
+            df['date'] = pd.to_datetime(df['date'])
+            df['quantity'] = pd.to_numeric(df['quantity'], errors='coerce').fillna(0)
+            df = df.sort_values('date')
+
+            # Remove duplicates, keep last
+            df = df.drop_duplicates(subset=['date'], keep='last')
+
+        except Exception as e:
+            logger.error(f"Data parsing error: {e}")
+            raise HTTPException(status_code=400, detail=f"Invalid sales_data format: {str(e)}")
+
+        # Try to load existing model first if product_id is provided
+        model_loaded = False
+        brain = HybridBrain(product_id=product_id)
+
+        if product_id and product_id != "universal":
+            model_candidates = [
+                os.path.join(BASE_DIR, "training", "models_output", f"xgboost_{product_id}.pkl"),
+                os.path.join(BASE_DIR, "models", f"xgboost_{product_id}.pkl"),
+                os.path.join(BASE_DIR, "models", "artifacts", f"xgboost_{product_id}.pkl"),
+            ]
+
+            for path in model_candidates:
+                if os.path.exists(path):
+                    if brain.load_model(product_id, path):
+                        model_loaded = True
+                        logger.info(f"Loaded existing model for {product_id}")
+                        break
+
+        # If no model loaded, train on-the-fly with the provided data
+        if not model_loaded:
+            logger.info(f"No model found, training on-the-fly with {len(df)} data points")
+
+            # Prepare training data
+            training_data = df.to_dict('records')
+            for row in training_data:
+                row['date'] = row['date'].strftime('%Y-%m-%d') if hasattr(row['date'], 'strftime') else str(row['date'])
+
+            # Train the model
+            try:
+                brain.train(training_data, product_id)
+            except Exception as train_err:
+                logger.warning(f"Training failed: {train_err}, using physics-based fallback")
+                # Continue anyway - brain will use physics-based predictions
+
+        # Generate predictions
+        predictions = brain.predict_next_days(forecast_days)
+
+        if not predictions:
+            # Fallback to simple physics-based prediction
+            logger.warning("Model predictions empty, generating fallback")
+            predictions = _generate_fallback_predictions(df, forecast_days)
+
+        # Calculate confidence based on data quality
+        data_quality = min(1.0, len(df) / 30)  # Max confidence at 30 days of data
+
+        # Detect momentum from data
+        momentum = _calculate_momentum(df)
+
+        # Detect burst
+        burst = _detect_burst(df)
+
+        return {
+            'success': True,
+            'product_id': product_id,
+            'model_type': 'trained' if model_loaded else 'on-the-fly',
+            'predictions': predictions,
+            'data_points': len(df),
+            'data_quality': round(data_quality, 2),
+            'momentum': momentum,
+            'burst': burst,
+            'generated_at': datetime.now().isoformat()
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Universal predict error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def _generate_fallback_predictions(df, days: int) -> List[Dict]:
+    """Generate simple physics-based predictions when model fails"""
+    import pandas as pd
+
+    if df.empty:
+        return []
+
+    # Calculate baseline from recent data
+    recent = df.tail(14)
+    baseline = recent['quantity'].mean() if len(recent) > 0 else 0
+    std = recent['quantity'].std() if len(recent) > 1 else baseline * 0.1
+
+    predictions = []
+    last_date = df['date'].max()
+
+    for i in range(1, days + 1):
+        pred_date = last_date + timedelta(days=i)
+        day_of_week = pred_date.weekday()
+
+        # Weekend factor
+        weekend_factor = 1.2 if day_of_week in [5, 6] else 1.0
+
+        # Day of month factor (payday effect)
+        day_of_month = pred_date.day
+        payday_factor = 1.15 if (day_of_month >= 25 or day_of_month <= 5) else 1.0
+
+        predicted = max(0, baseline * weekend_factor * payday_factor)
+        lower = max(0, predicted - std)
+        upper = predicted + std
+
+        predictions.append({
+            'date': pred_date.strftime('%Y-%m-%d'),
+            'predicted_quantity': round(predicted, 2),
+            'lower_bound': round(lower, 2),
+            'upper_bound': round(upper, 2),
+            'confidence': 'LOW'
+        })
+
+    return predictions
+
+
+def _calculate_momentum(df) -> Dict:
+    """Calculate momentum from sales data"""
+    if len(df) < 7:
+        return {'combined': 1.0, 'status': 'STABLE'}
+
+    recent_7 = df.tail(7)['quantity'].mean()
+    previous_7 = df.tail(14).head(7)['quantity'].mean() if len(df) >= 14 else recent_7
+
+    ratio = recent_7 / previous_7 if previous_7 > 0 else 1.0
+
+    if ratio > 1.15:
+        status = 'TRENDING_UP'
+    elif ratio > 1.05:
+        status = 'GROWING'
+    elif ratio < 0.85:
+        status = 'DECLINING'
+    elif ratio < 0.95:
+        status = 'FALLING'
+    else:
+        status = 'STABLE'
+
+    return {
+        'combined': round(ratio, 3),
+        'status': status
+    }
+
+
+def _detect_burst(df) -> Dict:
+    """Detect burst/anomaly in sales data"""
+    if len(df) < 5:
+        return {'score': 0, 'level': 'NORMAL', 'type': 'NORMAL'}
+
+    quantities = df['quantity'].values
+    baseline = quantities[:-1]
+    latest = quantities[-1]
+
+    mean = baseline.mean() if len(baseline) > 0 else 0
+    std = baseline.std() if len(baseline) > 1 else 1
+    std = max(std, 0.1)  # Prevent division by zero
+
+    z_score = (latest - mean) / std
+
+    if z_score > 3:
+        level = 'CRITICAL'
+    elif z_score > 2:
+        level = 'HIGH'
+    elif z_score > 1.5:
+        level = 'MEDIUM'
+    else:
+        level = 'NORMAL'
+
+    # Determine type
+    burst_type = 'NORMAL'
+    if level != 'NORMAL':
+        last_date = df['date'].max()
+        if hasattr(last_date, 'weekday'):
+            day = last_date.weekday()
+            burst_type = 'SEASONAL' if day in [5, 6] else 'SPIKE'
+
+    return {
+        'score': round(float(z_score), 2),
+        'level': level,
+        'type': burst_type
+    }
 
 
 @app.post("/api/ml/train")

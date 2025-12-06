@@ -675,7 +675,7 @@ class HybridBrain:
             confidence = 'MEDIUM'
 
         momentum = self.physics_metrics.get('momentum', {}).get('combined', 0.0)
-        trend_factor = 1.0 + (momentum * runtime_config.training.trend_factor_scale)
+        trend_factor = 1.0 + (momentum * runtime_config.demand.trend_factor_scale)
         current_row = self.last_row.copy()
 
         base_date = pd.to_datetime(self.last_date) if self.last_date else pd.Timestamp.now()
@@ -704,12 +704,12 @@ class HybridBrain:
             # Smoothing (prevent extreme jumps)
             if predictions:
                 prev = predictions[-1]['predicted_quantity']
-                max_change = prev * runtime_config.training.smoothing_max_change_fraction
+                max_change = prev * runtime_config.demand.smoothing_max_change_fraction
                 final_pred = max(prev - max_change, min(prev + max_change, final_pred))
-            
-            final_pred = max(runtime_config.training.min_prediction_quantity, round(final_pred, 1))
-            
-            uncertainty = runtime_config.training.forecast_uncertainty_z * self.std_error
+
+            final_pred = max(runtime_config.demand.min_prediction_quantity, round(final_pred, 1))
+
+            uncertainty = runtime_config.demand.forecast_uncertainty_z * self.std_error
             predictions.append({
                 'date': pred_date.strftime('%Y-%m-%d'),
                 'predicted_quantity': final_pred,
