@@ -4,7 +4,133 @@ import { prisma } from '../../lib/database/schema';
 import { getSalesData } from '../../lib/database/queries';
 
 export class AnalyticsController {
-  
+
+  /**
+   * GET /api/analytics/summary
+   * Get dashboard summary with today's stats, burst alerts, and top products
+   */
+  static async getDashboardSummary(req: Request, res: Response) {
+    try {
+      const userId = req.user?.sub;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'User tidak terotentikasi'
+        });
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      // Get today's sales
+      const todaySales = await prisma.sales.findMany({
+        where: {
+          user_id: userId,
+          sale_date: {
+            gte: today
+          }
+        },
+        include: {
+          products: true
+        }
+      });
+
+      // Get yesterday's sales for comparison
+      const yesterdaySales = await prisma.sales.findMany({
+        where: {
+          user_id: userId,
+          sale_date: {
+            gte: yesterday,
+            lt: today
+          }
+        }
+      });
+
+      // Calculate today's totals
+      const todayTotal = todaySales.reduce((sum, sale) => sum + Number(sale.quantity), 0);
+      const todayRevenue = todaySales.reduce((sum, sale) => sum + Number(sale.revenue || 0), 0);
+
+      // Calculate yesterday's totals for comparison
+      const yesterdayTotal = yesterdaySales.reduce((sum, sale) => sum + Number(sale.quantity), 0);
+      const yesterdayRevenue = yesterdaySales.reduce((sum, sale) => sum + Number(sale.revenue || 0), 0);
+
+      // Calculate changes
+      const quantityChange = yesterdayTotal > 0
+        ? ((todayTotal - yesterdayTotal) / yesterdayTotal) * 100
+        : 0;
+      const revenueChange = yesterdayRevenue > 0
+        ? ((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100
+        : 0;
+
+      // Get burst alerts from daily_analytics
+      const burstAlerts = await prisma.daily_analytics.findMany({
+        where: {
+          user_id: userId,
+          burst_level: {
+            in: ['HIGH', 'CRITICAL']
+          }
+        },
+        include: {
+          products: true
+        },
+        orderBy: {
+          burst_score: 'desc'
+        },
+        take: 5
+      });
+
+      // Get top products today
+      const productSales = todaySales.reduce((acc, sale) => {
+        const id = sale.product_id;
+        if (!acc[id]) {
+          acc[id] = {
+            product_id: id,
+            product_name: sale.products?.name || 'Unknown',
+            quantity: 0
+          };
+        }
+        acc[id].quantity += Number(sale.quantity);
+        return acc;
+      }, {} as Record<string, any>);
+
+      const topProducts = Object.values(productSales)
+        .sort((a: any, b: any) => b.quantity - a.quantity)
+        .slice(0, 3);
+
+      res.json({
+        success: true,
+        summary: {
+          today: {
+            total_quantity: todayTotal,
+            total_revenue: todayRevenue,
+            sales_count: todaySales.length
+          },
+          changes: {
+            quantity_change: Math.round(quantityChange * 10) / 10,
+            revenue_change: Math.round(revenueChange * 10) / 10
+          },
+          burst_alerts: burstAlerts.map(alert => ({
+            product_id: alert.product_id,
+            product_name: alert.products?.name || 'Unknown',
+            burst_score: Number(alert.burst_score || 0),
+            burst_level: alert.burst_level || 'NORMAL'
+          })),
+          top_products: topProducts
+        }
+      });
+
+    } catch (error: any) {
+      console.error('[AnalyticsController] Summary error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Gagal mendapatkan summary'
+      });
+    }
+  }
+
   /**
    * GET /api/analytics/products/:productId/forecast
    * Get ML forecast for a specific product

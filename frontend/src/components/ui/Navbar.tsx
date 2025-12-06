@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, ShoppingBag, User, LogOut, Settings } from "lucide-react";
 
@@ -22,9 +22,10 @@ let hasAnimated = false;
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // Simulasi login state
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const pathname = usePathname();
+  const router = useRouter();
 
   // LOGIKA ANIMASI:
   // Animasi hanya jalan jika:
@@ -43,6 +44,12 @@ export default function Navbar() {
     hasAnimated = true;
 
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Sync auth state with localStorage on mount
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    setIsLoggedIn(!!token);
   }, []);
 
   return (
@@ -109,8 +116,13 @@ export default function Navbar() {
                             <User size={18} className="text-gray-600"/>
                         </div>
                     </div>
-                    <button 
-                        onClick={() => setIsLoggedIn(false)} 
+                    <button
+                        onClick={() => {
+                          localStorage.removeItem("token");
+                          localStorage.removeItem("user_id");
+                          setIsLoggedIn(false);
+                          router.push("/login");
+                        }}
                         className="text-gray-500 hover:text-[#DC2626] transition-colors" title="Logout">
                         <LogOut size={20} />
                     </button>
@@ -119,7 +131,6 @@ export default function Navbar() {
                 <>
                   <Link
                     href="/login"
-                    onClick={(e) => { e.preventDefault(); setIsLoggedIn(true); }}
                     className="text-sm font-semibold text-black hover:text-[#DC2626] transition-colors"
                   >
                     Log In
@@ -185,8 +196,14 @@ export default function Navbar() {
                                 <span className="text-sm font-bold text-gray-800">Admin User</span>
                             </div>
                         </div>
-                        <button 
-                            onClick={() => { setIsLoggedIn(false); setIsOpen(false); }}
+                        <button
+                            onClick={() => {
+                              localStorage.removeItem("token");
+                              localStorage.removeItem("user_id");
+                              setIsLoggedIn(false);
+                              setIsOpen(false);
+                              router.push("/login");
+                            }}
                             className="w-full flex items-center gap-2 px-3 py-3 text-red-600 font-medium hover:bg-red-50 rounded-lg"
                         >
                             <LogOut size={18} /> Logout

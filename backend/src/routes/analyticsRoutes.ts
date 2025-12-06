@@ -8,6 +8,9 @@ const router = Router();
 // All routes require authentication
 router.use(authenticateToken);
 
+// Dashboard summary (must be before other routes to avoid conflicts)
+router.get('/summary', AnalyticsController.getDashboardSummary);
+
 // Product forecast
 router.get('/products/:productId/forecast', AnalyticsController.getProductForecast);
 
