@@ -5,11 +5,15 @@ import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { AlertTriangle, Trophy, Calendar, TrendingUp, DollarSign } from 'lucide-react';
 import { fetchWithAuth } from '@/lib/api';
-import Navbar from '@/components/ui/Navbar';
 
 export default function ReportsPage() {
-  const [report, setReport] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  // 1. Inisialisasi dengan DATA KOSONG (Default) agar tidak perlu loading screen
+  const [report, setReport] = useState<any>({
+    dateRange: { start: '-', end: '-' },
+    summary: { totalQuantity: 0, totalRevenue: 0 },
+    topPerformers: [],
+    attentionNeeded: []
+  });
 
   useEffect(() => {
     const loadData = async () => {
@@ -20,19 +24,16 @@ export default function ReportsPage() {
           setReport(data.data);
         }
       } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
+        console.error("Gagal memuat laporan:", error);
       }
     };
     loadData();
   }, []);
 
-  if (loading) return <div className="p-8 text-center">Menyiapkan laporan...</div>;
-  if (!report) return <div className="p-8 text-center">Gagal memuat laporan.</div>;
-
+  // HAPUS BAGIAN "if (loading) return..."
+  
   return (
-<div className="min-h-screen bg-gray-50 text-slate-900 selection:bg-red-600 selection:text-white">    <Navbar />
+    <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-5xl mx-auto space-y-8">
         
         {/* Header */}
@@ -55,7 +56,9 @@ export default function ReportsPage() {
                     </div>
                     <div>
                         <p className="text-sm text-gray-600 font-medium">Total Terjual</p>
-                        <p className="text-3xl font-bold text-gray-900">{report.summary.totalQuantity} <span className="text-base font-normal text-gray-500">items</span></p>
+                        <p className="text-3xl font-bold text-gray-900">
+                            {report.summary.totalQuantity.toLocaleString('id-ID')} <span className="text-base font-normal text-gray-500">items</span>
+                        </p>
                     </div>
                 </CardContent>
             </Card>
@@ -66,7 +69,9 @@ export default function ReportsPage() {
                     </div>
                     <div>
                         <p className="text-sm text-gray-600 font-medium">Estimasi Revenue</p>
-                        <p className="text-3xl font-bold text-gray-900">Rp {report.summary.totalRevenue.toLocaleString('id-ID')}</p>
+                        <p className="text-3xl font-bold text-gray-900">
+                            Rp {report.summary.totalRevenue.toLocaleString('id-ID')}
+                        </p>
                     </div>
                 </CardContent>
             </Card>
@@ -84,7 +89,7 @@ export default function ReportsPage() {
                 </CardHeader>
                 <CardContent className="pt-4 space-y-4">
                     {report.topPerformers.length === 0 ? (
-                        <p className="text-gray-500 text-sm">Belum ada data penjualan.</p>
+                        <p className="text-gray-500 text-sm italic">Menunggu data...</p>
                     ) : (
                         report.topPerformers.map((prod: any, idx: number) => (
                             <div key={idx} className="flex items-center justify-between">
