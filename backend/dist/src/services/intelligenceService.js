@@ -74,20 +74,45 @@ class IntelligenceService {
     }
     getRuleBasedPredictions(salesData, days) {
         const data = this.normalizeSales(salesData);
-        const baseline = data.reduce((sum, row) => sum + row.quantity, 0) / (data.length || 1);
         const predictions = [];
         const anchor = data.length ? new Date(data[data.length - 1].date) : new Date();
+        // Calculate baseline and trend
+        const quantities = data.map(d => d.quantity);
+        const baseline = quantities.reduce((sum, q) => sum + q, 0) / (quantities.length || 1);
+        // Calculate trend (slope) using last 7 days if available
+        let trend = 0;
+        if (quantities.length >= 3) {
+            const recentDays = Math.min(7, quantities.length);
+            const recent = quantities.slice(-recentDays);
+            const firstHalf = recent.slice(0, Math.floor(recent.length / 2));
+            const secondHalf = recent.slice(Math.floor(recent.length / 2));
+            const avgFirst = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+            const avgSecond = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+            trend = (avgSecond - avgFirst) / recentDays; // daily trend
+        }
+        // Calculate variance for realistic bounds
+        const variance = quantities.length > 1
+            ? Math.sqrt(quantities.reduce((sum, q) => sum + Math.pow(q - baseline, 2), 0) / quantities.length)
+            : baseline * 0.2;
         for (let i = 1; i <= days; i += 1) {
             const targetDate = new Date(anchor);
             targetDate.setDate(anchor.getDate() + i);
             const factors = (0, calendar_1.getCalendarFactors)({ date: targetDate });
-            const expected = baseline * factors.totalFactor;
+            // Apply trend + calendar factors
+            const trendAdjustment = trend * i;
+            const baseExpected = Math.max(1, baseline + trendAdjustment);
+            const expected = baseExpected * factors.totalFactor;
+            // Add small random variation for more realistic predictions (seeded by date)
+            const dayVariation = 1 + (Math.sin(targetDate.getDate() * 0.5) * 0.1);
+            const finalExpected = expected * dayVariation;
+            // Bounds based on actual variance
+            const boundRange = Math.max(variance * 0.5, finalExpected * 0.15, 1);
             predictions.push({
                 date: targetDate.toISOString().split('T')[0],
-                predicted_quantity: Number(expected.toFixed(2)),
-                confidence: 'LOW',
-                lower_bound: Number((expected * 0.8).toFixed(2)),
-                upper_bound: Number((expected * 1.2).toFixed(2)),
+                predicted_quantity: Math.max(1, Math.round(finalExpected)),
+                confidence: data.length >= 14 ? 'MEDIUM' : 'LOW',
+                lower_bound: Math.max(0, Math.round(finalExpected - boundRange)),
+                upper_bound: Math.round(finalExpected + boundRange),
             });
         }
         return predictions;
@@ -222,16 +247,16 @@ class IntelligenceService {
         return {
             productId, productName, realtime: realtimeMetrics,
             forecast: {
-                method: 'hybrid-ml (universal)', // ✅ THIS SHOULD SHOW NOW
+                method: 'hybrid-ml (universal)',
                 predictions: predictions.map((p) => ({
                     date: p.date,
-                    predicted_quantity: p.predicted_quantity,
+                    predicted_quantity: Math.round(p.predicted_quantity),
                     confidence: p.confidence || 'MEDIUM',
-                    lower_bound: p.lower_bound,
-                    upper_bound: p.upper_bound
+                    lower_bound: Math.round(p.lower_bound || p.predicted_quantity * 0.8),
+                    upper_bound: Math.round(p.upper_bound || p.predicted_quantity * 1.2)
                 })),
                 trend,
-                totalForecast7d: Number(total7d.toFixed(0)),
+                totalForecast7d: Math.round(total7d),
                 summary: `Prediksi ML universal (${cleaned.length} hari data).`
             },
             recommendations,

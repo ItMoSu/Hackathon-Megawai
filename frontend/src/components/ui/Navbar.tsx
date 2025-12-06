@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, ShoppingBag, User, LogOut, Settings } from "lucide-react";
+import { Menu, X, ShoppingBag, User, LogOut } from "lucide-react";
 
 const navLinks = [
   { name: "Home", href: "/" },
@@ -14,59 +14,48 @@ const navLinks = [
   { name: "Reports", href: "/reports" },
 ];
 
-// VARIABEL GLOBAL: 
-// Disimpan di memori browser selama tab tidak di-refresh.
-// Ini mencegah animasi ulang saat navigasi antar halaman.
 let hasAnimated = false;
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   const pathname = usePathname();
   const router = useRouter();
 
-  // LOGIKA ANIMASI:
-  // Animasi hanya jalan jika:
-  // 1. Ini adalah load pertama (hasAnimated masih false)
-  // 2. User berada di halaman Home ("/")
   const shouldAnimate = !hasAnimated && pathname === "/";
 
   useEffect(() => {
-    // Deteksi scroll untuk efek kaca (glassmorphism)
+    setIsMounted(true);
+    hasAnimated = true;
+    
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
     };
-    window.addEventListener("scroll", handleScroll);
-
-    // Setelah komponen dimount sekali, kita tandai bahwa animasi sudah pernah terjadi.
-    hasAnimated = true;
+    window.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Sync auth state with localStorage on mount
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    setIsLoggedIn(!!token);
-  }, []);
+    if (isMounted) {
+      const token = localStorage.getItem("token");
+      setIsLoggedIn(!!token);
+    }
+  }, [isMounted]);
 
   return (
     <>
       <motion.nav
-        // KUNCI PERUBAHAN DISINI:
-        // Jika `shouldAnimate` true, mulai dari -100 (atas).
-        // Jika tidak (sudah pernah load atau bukan home), mulai dari 0 (diam).
         initial={{ y: shouldAnimate ? -100 : 0 }}
         animate={{ y: 0 }}
-        // Kita set layout prop agar Framer Motion tau ini komponen layout persisten
-        layout="position" 
         transition={{ duration: 0.5, ease: "easeOut" }}
         className={`fixed w-full z-50 transition-all duration-300 ${
           scrolled
             ? "bg-white/90 backdrop-blur-md shadow-md py-3"
-            : "bg-transparent py-5"
+            : "bg-white py-5"
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -93,8 +82,6 @@ export default function Navbar() {
                   {link.name}
                   {pathname === link.href && (
                     <motion.div
-                      // layoutId membuat garis bawah 'meluncur' saat pindah menu.
-                      // Jika kamu merasa ini juga "jelek" saat pindah page jauh, hapus baris layoutId ini.
                       layoutId="underline"
                       className="absolute left-0 top-full mt-1 w-full h-0.5 bg-[#DC2626]"
                     />
@@ -105,7 +92,9 @@ export default function Navbar() {
 
             {/* AUTH BUTTONS */}
             <div className="hidden md:flex items-center gap-4">
-              {isLoggedIn ? (
+              {isLoggedIn === null ? (
+                <div className="w-24 h-9 bg-gray-100 rounded-full animate-pulse" />
+              ) : isLoggedIn ? (
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2 pr-4 border-r border-gray-300">
                         <div className="text-right hidden lg:block">
@@ -170,7 +159,7 @@ export default function Navbar() {
               className="md:hidden bg-white border-t border-gray-100 overflow-hidden shadow-xl"
             >
               <div className="px-4 pt-4 pb-6 space-y-2 flex flex-col">
-                {navLinks.map((link, i) => (
+                {navLinks.map((link) => (
                   <Link
                     key={link.name}
                     href={link.href}
@@ -186,41 +175,45 @@ export default function Navbar() {
                 ))}
 
                 <div className="border-t border-gray-100 my-2 pt-2 space-y-2">
-                  {isLoggedIn ? (
-										<>
-                        <div className="flex items-center gap-3 px-3 py-2 bg-gray-50 rounded-lg">
-                            <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center border border-gray-200">
-                                <User size={16} className="text-gray-600"/>
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-sm font-bold text-gray-800">Admin User</span>
-                            </div>
+                  {isLoggedIn === null ? (
+                    <div className="px-3 py-3">
+                      <div className="w-full h-10 bg-gray-100 rounded-lg animate-pulse" />
+                    </div>
+                  ) : isLoggedIn ? (
+                    <>
+                      <div className="flex items-center gap-3 px-3 py-2 bg-gray-50 rounded-lg">
+                        <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center border border-gray-200">
+                          <User size={16} className="text-gray-600"/>
                         </div>
-                        <button
-                            onClick={() => {
-                              localStorage.removeItem("token");
-                              localStorage.removeItem("user_id");
-                              setIsLoggedIn(false);
-                              setIsOpen(false);
-                              router.push("/login");
-                            }}
-                            className="w-full flex items-center gap-2 px-3 py-3 text-red-600 font-medium hover:bg-red-50 rounded-lg"
-                        >
-                            <LogOut size={18} /> Logout
-                        </button>
-                     </>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-gray-800">Admin User</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          localStorage.removeItem("token");
+                          localStorage.removeItem("user_id");
+                          setIsLoggedIn(false);
+                          setIsOpen(false);
+                          router.push("/login");
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-3 text-red-600 font-medium hover:bg-red-50 rounded-lg"
+                      >
+                        <LogOut size={18} /> Logout
+                      </button>
+                    </>
                   ) : (
                     <>
-                        <Link href="/login" onClick={() => setIsOpen(false)}>
-                            <button className="w-full text-left px-3 py-3 text-gray-700 font-medium hover:text-[#DC2626]">
-                            Log In
-                            </button>
-                        </Link>
-                        <Link href="/register" onClick={() => setIsOpen(false)}>
-                            <button className="w-full px-3 py-3 bg-[#DC2626] text-white rounded-lg font-bold shadow-md">
-                            Sign Up Now
-                            </button>
-                        </Link>
+                      <Link href="/login" onClick={() => setIsOpen(false)}>
+                        <button className="w-full text-left px-3 py-3 text-gray-700 font-medium hover:text-[#DC2626]">
+                          Log In
+                        </button>
+                      </Link>
+                      <Link href="/register" onClick={() => setIsOpen(false)}>
+                        <button className="w-full px-3 py-3 bg-[#DC2626] text-white rounded-lg font-bold shadow-md">
+                          Sign Up Now
+                        </button>
+                      </Link>
                     </>
                   )}
                 </div>

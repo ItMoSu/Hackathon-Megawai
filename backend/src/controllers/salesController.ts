@@ -51,7 +51,7 @@ export const createSalesEntry = async (req: Request, res: Response) => {
             source_file_name: 'manual_entry',
             source_file_type: 'csv', 
             storage_path: '',
-            status: 'active'
+            status: 'ready'
           }
         });
         dataset_id = newDataset.id;
@@ -63,7 +63,7 @@ export const createSalesEntry = async (req: Request, res: Response) => {
       productName: product_name, 
       date: saleDateObj,
       quantity: qtyNumber,
-      source: 'manual' 
+      source: 'csv' 
     }]);
 
     // 3. Find product ID if not provided
@@ -383,7 +383,7 @@ export const createBulkSales = async (req: Request, res: Response) => {
           source_file_name: 'manual_entry',
           source_file_type: 'csv', 
           storage_path: '',
-          status: 'active'
+          status: 'ready'
         }
       });
       dataset_id = newDataset.id;
@@ -404,7 +404,7 @@ export const createBulkSales = async (req: Request, res: Response) => {
       productName: entry.product_name,
       date: saleDateObj,
       quantity: Number(entry.quantity),
-      source: 'manual_bulk'
+      source: 'csv'
     }));
 
     // Bulk upsert
@@ -496,3 +496,236 @@ export const createBulkSales = async (req: Request, res: Response) => {
     });
   }
 };
+
+/**
+ * GET /api/sales/history
+ * Get recent sales history for display
+ */
+export const getSalesHistory = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.sub;
+    const limit = Math.min(Number(req.query.limit) || 20, 100);
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: "User tidak terotentikasi" });
+    }
+
+    const sales = await prisma.sales.findMany({
+      where: {
+        products: {
+          user_id: String(userId)
+        }
+      },
+      include: {
+        products: {
+          select: { name: true }
+        }
+      },
+      orderBy: { sale_date: 'desc' },
+      take: limit
+    });
+
+    const history = sales.map(s => ({
+      date: s.sale_date.toISOString().split('T')[0],
+      product_name: s.products?.name || 'Unknown',
+      quantity: Number(s.quantity)
+    }));
+
+    res.json({ success: true, data: history });
+  } catch (error) {
+    console.error("[SalesController] History error:", error);
+    res.status(500).json({ success: false, error: "Gagal mengambil riwayat" });
+  }
+};
+
+/**
+ * POST /api/sales/upload
+ * Upload Excel/CSV/Word file for bulk sales import
+ */
+export const uploadSalesFile = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.sub;
+    const file = req.file;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: "User tidak terotentikasi" });
+    }
+
+    if (!file) {
+      return res.status(400).json({ success: false, error: "File tidak ditemukan" });
+    }
+
+    const fileName = file.originalname.toLowerCase();
+    let parsedData: Array<{ productName: string; quantity: number; date?: string }> = [];
+
+    // Parse based on file type
+    if (fileName.endsWith('.csv')) {
+      parsedData = parseCSV(file.buffer.toString('utf-8'));
+    } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+      // For Excel files, we'd need xlsx library - for now return error
+      return res.status(400).json({ 
+        success: false, 
+        error: "Upload Excel akan segera tersedia. Gunakan CSV untuk saat ini." 
+      });
+    } else if (fileName.endsWith('.docx')) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Upload Word akan segera tersedia. Gunakan CSV untuk saat ini." 
+      });
+    } else {
+      return res.status(400).json({ success: false, error: "Format file tidak didukung" });
+    }
+
+    if (parsedData.length === 0) {
+      return res.status(400).json({ success: false, error: "Tidak ada data valid dalam file" });
+    }
+
+    // Get sale_date from request or use today
+    const defaultDate = req.body.sale_date || new Date().toISOString().split('T')[0];
+
+    // Convert to bulk upsert format - date must be Date object
+    const rows = parsedData.map(item => {
+      const dateStr = item.date || defaultDate;
+      const dateObj = new Date(dateStr + 'T00:00:00');
+      return {
+        productName: item.productName,
+        quantity: item.quantity,
+        date: dateObj
+      };
+    }).filter(row => !isNaN(row.date.getTime())); // Filter invalid dates
+
+    if (rows.length === 0) {
+      return res.status(400).json({ success: false, error: "Tidak ada data valid dengan tanggal yang benar" });
+    }
+
+    // Return immediately, process in background
+    const { randomUUID } = require('crypto');
+    const uploadDatasetId = randomUUID();
+    const userIdStr = String(userId);
+    const rowCount = rows.length;
+
+    // Send response FIRST
+    res.json({ 
+      success: true, 
+      message: `Memproses ${rowCount} data di background...`,
+      processed: rowCount
+    });
+
+    // Process in background (after response sent)
+    setImmediate(async () => {
+      try {
+        console.log(`[Upload] Background processing ${rowCount} rows for user ${userIdStr}`);
+        await bulkUpsertSales(userIdStr, uploadDatasetId, rows);
+        console.log(`[Upload] Background done: ${rowCount} rows`);
+      } catch (err) {
+        console.error(`[Upload] Background error:`, err);
+      }
+    });
+
+  } catch (error) {
+    console.error("[SalesController] Upload error:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: error instanceof Error ? error.message : "Gagal memproses file" 
+    });
+  }
+};
+
+// Helper function to parse CSV - supports multiple formats
+function parseCSV(content: string): Array<{ productName: string; quantity: number; date?: string }> {
+  const lines = content.split('\n').filter(line => line.trim());
+  const result: Array<{ productName: string; quantity: number; date?: string }> = [];
+
+  if (lines.length === 0) return result;
+
+  // Detect header and column positions
+  const header = lines[0].toLowerCase();
+  let startIndex = 0;
+  let colMap = { product: 0, quantity: 1, date: -1 };
+
+  // Check if first line is header
+  const isHeader = header.includes('tanggal') || header.includes('produk') || 
+                   header.includes('product') || header.includes('nama') ||
+                   header.includes('qty') || header.includes('menu');
+
+  if (isHeader) {
+    startIndex = 1;
+    const headerCols = lines[0].split(',').map(c => c.trim().toLowerCase().replace(/"/g, ''));
+    
+    // Find column indices dynamically
+    headerCols.forEach((col, idx) => {
+      if (col.includes('nama') || col.includes('produk') || col.includes('product') || col.includes('menu')) {
+        colMap.product = idx;
+      }
+      if (col.includes('qty') || col.includes('quantity') || col.includes('jumlah') || col.includes('terjual')) {
+        colMap.quantity = idx;
+      }
+      if (col.includes('tanggal') || col.includes('date') || col.includes('tgl')) {
+        colMap.date = idx;
+      }
+    });
+  }
+
+  for (let i = startIndex; i < lines.length; i++) {
+    const cols = lines[i].split(',').map(c => c.trim().replace(/"/g, ''));
+    
+    if (cols.length >= 2) {
+      const productName = cols[colMap.product] || '';
+      const quantity = parseInt(cols[colMap.quantity], 10);
+      let date: string | undefined = undefined;
+
+      // Get date if available
+      if (colMap.date >= 0 && cols[colMap.date]) {
+        const rawDate = cols[colMap.date];
+        // Parse various date formats
+        const parsed = parseFlexibleDate(rawDate);
+        if (parsed) date = parsed;
+      }
+
+      if (productName && !isNaN(quantity) && quantity >= 0) {
+        result.push({ productName, quantity, date });
+      }
+    }
+  }
+
+  return result;
+}
+
+// Parse various date formats to YYYY-MM-DD
+function parseFlexibleDate(dateStr: string): string | undefined {
+  if (!dateStr) return undefined;
+
+  // Try different date formats
+  const formats = [
+    // YYYY-MM-DD
+    /^(\d{4})-(\d{1,2})-(\d{1,2})$/,
+    // DD-MM-YYYY or DD/MM/YYYY
+    /^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/,
+    // MM-DD-YYYY or MM/DD/YYYY
+    /^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/,
+  ];
+
+  // YYYY-MM-DD format
+  let match = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (match) {
+    const [_, y, m, d] = match;
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+
+  // DD-MM-YYYY or DD/MM/YYYY format
+  match = dateStr.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+  if (match) {
+    const [_, d, m, y] = match;
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+
+  // Try native Date parsing as fallback
+  try {
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      return d.toISOString().split('T')[0];
+    }
+  } catch {}
+
+  return undefined;
+}

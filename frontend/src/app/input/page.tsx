@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/ui/Navbar"; 
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { FolderOpen, Calendar, Package, Save, CheckCircle, AlertCircle, Minus, Plus } from "lucide-react"; 
+import { FolderOpen, Calendar, Package, Save, CheckCircle, AlertCircle, Minus, Plus, Upload, FileSpreadsheet, Info, History, Loader2 } from "lucide-react"; 
 
 interface Product {
   id: string;
@@ -21,14 +21,28 @@ interface SalesEntry {
   quantity: number;
 }
 
+function getTodayDate() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export default function InputPage() {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [saleDate, setSaleDate] = useState(new Date().toISOString().split("T")[0]);
+  const [saleDate, setSaleDate] = useState<string>("");
   const [entries, setEntries] = useState<Record<string, number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+  const [salesHistory, setSalesHistory] = useState<Array<{date: string, product_name: string, quantity: number}>>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem("token");
@@ -39,6 +53,13 @@ export default function InputPage() {
   };
 
   useEffect(() => {
+    setIsMounted(true);
+    setSaleDate(getTodayDate());
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    
     const fetchProducts = async () => {
       setIsLoading(true);
       try {
@@ -69,8 +90,98 @@ export default function InputPage() {
       }
     };
 
-    fetchProducts();
-  }, []); 
+    // Parallel fetch for faster loading
+    Promise.all([fetchProducts(), fetchSalesHistory()]);
+  }, [isMounted, router]); 
+
+  const fetchSalesHistory = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const res = await fetch("http://localhost:5000/api/sales/history?limit=20", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const result = await res.json();
+      
+      if (result.success && Array.isArray(result.data)) {
+        setSalesHistory(result.data);
+      }
+    } catch (err) {
+      console.error("Gagal load history", err);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // xlsx
+      'application/vnd.ms-excel', // xls
+      'text/csv',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // docx
+    ];
+
+    if (!allowedTypes.includes(file.type) && !file.name.endsWith('.csv')) {
+      setMessage({ type: 'error', text: 'Format file tidak didukung. Gunakan Excel (.xlsx, .xls), CSV, atau Word (.docx)' });
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadProgress(0);
+    setMessage(null);
+
+    // Faster progress simulation
+    const progressInterval = setInterval(() => {
+      setUploadProgress(prev => {
+        if (prev >= 95) return prev;
+        return prev + 5;
+      });
+    }, 100);
+
+    try {
+      const token = localStorage.getItem("token");
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('sale_date', saleDate);
+
+      // Add timeout with AbortController
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+      const res = await fetch("http://localhost:5000/api/sales/upload", {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      const result = await res.json();
+
+      if (result.success) {
+        setMessage({ type: 'success', text: `Berhasil! ${result.processed || 0} data diproses.` });
+        fetchSalesHistory();
+      } else {
+        setMessage({ type: 'error', text: result.error || 'Gagal upload file' });
+      }
+    } catch (err: any) {
+      clearInterval(progressInterval);
+      if (err.name === 'AbortError') {
+        setMessage({ type: 'error', text: 'Upload timeout - file terlalu besar atau server sibuk' });
+      } else {
+        setMessage({ type: 'error', text: err.message || 'Gagal upload file' });
+      }
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const MAX_QUANTITY = 99999;
 
@@ -220,6 +331,70 @@ export default function InputPage() {
           </div>
         </div>
 
+        {/* Info Banner - 30 hari untuk AI */}
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-3">
+          <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-blue-800 font-medium text-sm">Tips untuk hasil AI yang optimal</p>
+            <p className="text-blue-600 text-sm mt-1">
+              Disarankan input data penjualan minimal <strong>30 hari berturut-turut</strong> agar AI dapat menganalisis pola dan memberikan prediksi yang lebih akurat.
+            </p>
+          </div>
+        </div>
+
+        {/* Upload File Card */}
+        <Card className="mb-6 border-l-4 border-l-green-500">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <FileSpreadsheet className="w-5 h-5 text-green-600" />
+                <div>
+                  <p className="font-medium text-gray-900">Upload Data Penjualan</p>
+                  <p className="text-gray-500 text-sm">Excel (.xlsx), CSV, atau Word (.docx)</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv,.docx"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="file-upload"
+                />
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Uploading... {uploadProgress}%
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4 mr-2" />
+                      Pilih File
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+            {isUploading && (
+              <div className="mt-3">
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-green-500 transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+          </CardContent>
+        </Card>
+
         {/* Date Picker Card */}
         <Card className="mb-6 border-l-4 border-l-red-500">
           <CardContent className="p-4">
@@ -228,21 +403,29 @@ export default function InputPage() {
                 <Calendar className="w-5 h-5 text-gray-500" />
                 <div>
                   <p className="text-sm text-gray-500">Tanggal Penjualan</p>
-                  <input
-                    type="date"
-                    value={saleDate}
-                    onChange={(e) => setSaleDate(e.target.value)}
-                    className="font-bold text-lg text-gray-900 bg-transparent border-none focus:outline-none cursor-pointer"
-                  />
+                  {saleDate ? (
+                    <input
+                      type="date"
+                      value={saleDate}
+                      onChange={(e) => setSaleDate(e.target.value)}
+                      className="font-bold text-lg text-gray-900 bg-transparent border-none focus:outline-none cursor-pointer"
+                    />
+                  ) : (
+                    <div className="h-7 w-32 bg-gray-100 rounded animate-pulse" />
+                  )}
                 </div>
               </div>
-              <Badge variant="secondary" className="bg-red-50 text-red-700">
-                {new Date(saleDate).toLocaleDateString('id-ID', { 
-                  weekday: 'long', 
-                  day: 'numeric', 
-                  month: 'long' 
-                })}
-              </Badge>
+              {saleDate ? (
+                <Badge variant="secondary" className="bg-red-50 text-red-700">
+                  {new Date(saleDate + 'T00:00:00').toLocaleDateString('id-ID', { 
+                    weekday: 'long', 
+                    day: 'numeric', 
+                    month: 'long' 
+                  })}
+                </Badge>
+              ) : (
+                <div className="h-6 w-28 bg-gray-100 rounded animate-pulse" />
+              )}
             </div>
           </CardContent>
         </Card>
@@ -388,6 +571,51 @@ export default function InputPage() {
                   <Save className="w-5 h-5 mr-2" />
                   Simpan Semua
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Sales History Table */}
+        {salesHistory.length > 0 && (
+          <Card className="mt-8">
+            <CardHeader className="border-b bg-gray-50">
+              <div className="flex items-center gap-2">
+                <History className="w-5 h-5 text-gray-500" />
+                <h3 className="font-bold text-gray-900">Riwayat Penjualan Terbaru</h3>
+                <Badge variant="outline" className="ml-auto">{salesHistory.length} data</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-600 text-sm">Tanggal</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-600 text-sm">Produk</th>
+                      <th className="text-right py-3 px-4 font-semibold text-gray-600 text-sm">Qty Terjual</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {salesHistory.map((sale, idx) => (
+                      <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                        <td className="py-3 px-4 text-sm text-gray-600">
+                          {new Date(sale.date).toLocaleDateString('id-ID', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                        </td>
+                        <td className="py-3 px-4 text-sm font-medium text-gray-900">{sale.product_name}</td>
+                        <td className="py-3 px-4 text-sm text-right">
+                          <Badge variant="secondary" className="bg-blue-50 text-blue-700">
+                            {sale.quantity} unit
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </CardContent>
           </Card>

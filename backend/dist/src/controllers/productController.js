@@ -22,9 +22,21 @@ const getProducts = async (req, res) => {
         if (!userId) {
             return res.status(401).json({ error: "User tidak terotentikasi" });
         }
-        const products = await schema_1.prisma.products.findMany({
-            where: { user_id: String(userId) },
-            orderBy: { created_at: 'desc' }
+        const allProducts = await schema_1.prisma.products.findMany({
+            where: { user_id: String(userId), is_active: true },
+            orderBy: [
+                { price: 'desc' }, // Prefer products with price
+                { created_at: 'asc' }
+            ]
+        });
+        // Deduplicate by name (case-insensitive), keep one with price
+        const seenNames = new Set();
+        const products = allProducts.filter(p => {
+            const lowerName = p.name.toLowerCase();
+            if (seenNames.has(lowerName))
+                return false;
+            seenNames.add(lowerName);
+            return true;
         });
         res.json({ success: true, data: products });
     }
@@ -82,11 +94,14 @@ const createProduct = async (req, res) => {
             }
         }
         const sanitizedName = sanitizeString(name);
-        const existing = await schema_1.prisma.products.findFirst({
-            where: { user_id: userId, name: sanitizedName }
+        // Case-insensitive check for duplicate names
+        const allProducts = await schema_1.prisma.products.findMany({
+            where: { user_id: userId },
+            select: { name: true }
         });
-        if (existing) {
-            return res.status(400).json({ error: "Produk dengan nama ini sudah ada" });
+        const isDuplicate = allProducts.some(p => p.name.toLowerCase() === sanitizedName.toLowerCase());
+        if (isDuplicate) {
+            return res.status(400).json({ error: `Produk "${sanitizedName}" sudah ada (tidak case-sensitive)` });
         }
         const newProduct = await schema_1.prisma.products.create({
             data: {
@@ -143,27 +158,58 @@ const getProductsWithRanking = async (req, res) => {
             return res.status(401).json({ error: "User tidak terotentikasi" });
         }
         // Get all products with their latest analytics
-        const products = await schema_1.prisma.products.findMany({
+        const allProducts = await schema_1.prisma.products.findMany({
             where: { user_id: String(userId), is_active: true },
-            orderBy: { created_at: 'desc' }
+            orderBy: [
+                { price: 'desc' }, // Prefer products with price
+                { created_at: 'asc' }
+            ]
         });
-        // Get latest analytics for each product
-        const productsWithAnalytics = await Promise.all(products.map(async (product) => {
-            const latestAnalytics = await schema_1.prisma.daily_analytics.findFirst({
-                where: { product_id: product.id },
-                orderBy: { metric_date: 'desc' }
-            });
-            // Get last 7 days sales for sparkline
-            const sevenDaysAgo = new Date();
-            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-            const recentSales = await schema_1.prisma.sales.findMany({
-                where: {
-                    product_id: product.id,
-                    sale_date: { gte: sevenDaysAgo }
-                },
-                orderBy: { sale_date: 'asc' }
-            });
-            const sparklineData = recentSales.map(s => Number(s.quantity));
+        // Deduplicate by name (case-insensitive), keep one with price
+        const seenNames = new Set();
+        const products = allProducts.filter(p => {
+            const lowerName = p.name.toLowerCase();
+            if (seenNames.has(lowerName))
+                return false;
+            seenNames.add(lowerName);
+            return true;
+        });
+        // Get product IDs for batch queries
+        const productIds = products.map(p => p.id);
+        // Batch fetch analytics for all products in ONE query
+        const allAnalytics = await schema_1.prisma.daily_analytics.findMany({
+            where: { product_id: { in: productIds } },
+            orderBy: { metric_date: 'desc' }
+        });
+        // Group analytics by product_id, keep only latest
+        const analyticsMap = new Map();
+        for (const a of allAnalytics) {
+            if (!analyticsMap.has(a.product_id)) {
+                analyticsMap.set(a.product_id, a);
+            }
+        }
+        // Batch fetch sales for sparkline in ONE query
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const allRecentSales = await schema_1.prisma.sales.findMany({
+            where: {
+                product_id: { in: productIds },
+                sale_date: { gte: sevenDaysAgo }
+            },
+            orderBy: { sale_date: 'asc' }
+        });
+        // Group sales by product_id
+        const salesMap = new Map();
+        for (const s of allRecentSales) {
+            if (!salesMap.has(s.product_id)) {
+                salesMap.set(s.product_id, []);
+            }
+            salesMap.get(s.product_id).push(Number(s.quantity));
+        }
+        // Build result without additional DB calls
+        const productsWithAnalytics = products.map(product => {
+            const latestAnalytics = analyticsMap.get(product.id);
+            const sparklineData = salesMap.get(product.id) || [];
             const totalSales7d = sparklineData.reduce((a, b) => a + b, 0);
             return {
                 ...product,
@@ -179,7 +225,7 @@ const getProductsWithRanking = async (req, res) => {
                 sparkline: sparklineData,
                 totalSales7d
             };
-        }));
+        });
         // Sort by priority score (desc), then by total sales
         const sorted = productsWithAnalytics.sort((a, b) => {
             const scoreA = a.analytics?.priority_score || 0;

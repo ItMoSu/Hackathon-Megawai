@@ -10,7 +10,7 @@ import {
 
 const defaultDatasetStatus = 'pending'
 const defaultStoragePath = ''
-const defaultSalesSource = 'unknown'
+const defaultSalesSource = 'csv'
 
 const ensureValidRange = (range: DateRange) => {
   if (!range?.startDate || !range?.endDate) {
@@ -35,7 +35,19 @@ const ensureDatasetForUser = async (userId: string, datasetId: string) => {
   })
 
   if (!dataset) {
-    throw new Error('Dataset not found for user')
+    // Create dataset if not exists (for uploads and bulk inserts)
+    const newDataset = await prisma.datasets.create({
+      data: {
+        id: datasetId,
+        user_id: userId,
+        name: `Upload ${new Date().toLocaleDateString('id-ID')}`,
+        status: 'ready',
+        source_file_type: 'csv',
+        source_file_name: 'upload.csv',
+        storage_path: `/uploads/${userId}/${datasetId}`,
+      }
+    })
+    return newDataset
   }
 
   return dataset
@@ -235,79 +247,89 @@ export async function bulkUpsertSales(
       }
     })
 
+    console.log(`[BulkUpsert] Starting: ${rows.length} rows`)
+    const startTime = Date.now()
+
     await ensureDatasetForUser(userId, datasetId)
+    console.log(`[BulkUpsert] Dataset ready: ${Date.now() - startTime}ms`)
 
-    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const productNames = Array.from(new Set(rows.map((row: UpsertSalesRow) => row.productName)))
+    const productNames = Array.from(new Set(rows.map((row: UpsertSalesRow) => row.productName)))
 
-      const existingProducts = await tx.products.findMany({
-        where: {
-          user_id: userId,
-          dataset_id: datasetId,
-          name: { in: productNames },
-        },
-      })
-
-      const existingByName = new Map<string, Product>(
-        existingProducts.map((product: Product) => [product.name, product]),
-      )
-
-      const missingNames = productNames.filter((name) => !existingByName.has(name))
-
-      if (missingNames.length) {
-        await tx.products.createMany({
-          data: missingNames.map((name) => ({
-            user_id: userId,
-            dataset_id: datasetId,
-            name,
-          })),
-        })
-      }
-
-      const productsForRows = await tx.products.findMany({
-        where: {
-          user_id: userId,
-          dataset_id: datasetId,
-          name: { in: productNames },
-        },
-      })
-
-      const productIdByName = new Map<string, string>(
-        productsForRows.map((product: Product) => [product.name, product.id]),
-      )
-
-      for (const row of rows) {
-        const productId = productIdByName.get(row.productName)
-
-        if (!productId) {
-          throw new Error(`Product resolution failed for ${row.productName}`)
-        }
-
-        await tx.sales.upsert({
-          where: {
-            product_id_sale_date: {
-              product_id: productId,
-              sale_date: row.date,
-            },
-          },
-          create: {
-            user_id: userId,
-            dataset_id: datasetId,
-            product_id: productId,
-            sale_date: row.date,
-            quantity: row.quantity,
-            has_promo: row.hasPromo ?? false,
-            source: row.source ?? defaultSalesSource,
-          },
-          update: {
-            quantity: row.quantity,
-            has_promo: row.hasPromo ?? false,
-            source: row.source ?? defaultSalesSource,
-            dataset_id: datasetId,
-          },
-        })
-      }
+    // 1. Get existing products in ONE query
+    const existingProducts = await prisma.products.findMany({
+      where: { user_id: userId, name: { in: productNames } },
+      orderBy: [{ price: 'desc' }, { created_at: 'asc' }]
     })
+    console.log(`[BulkUpsert] Found ${existingProducts.length} products: ${Date.now() - startTime}ms`)
+
+    // Build lookup map (case-insensitive, prefer with price)
+    const productMap = new Map<string, Product>()
+    for (const p of existingProducts) {
+      const key = p.name.toLowerCase()
+      if (!productMap.has(key)) productMap.set(key, p)
+    }
+
+    // 2. Create missing products in ONE query
+    const missingNames = productNames.filter(n => !productMap.has(n.toLowerCase()))
+    if (missingNames.length) {
+      await prisma.products.createMany({
+        data: missingNames.map(name => ({ user_id: userId, dataset_id: datasetId, name })),
+        skipDuplicates: true,
+      })
+      // Fetch newly created
+      const newProducts = await prisma.products.findMany({
+        where: { user_id: userId, name: { in: missingNames } }
+      })
+      for (const p of newProducts) {
+        const key = p.name.toLowerCase()
+        if (!productMap.has(key)) productMap.set(key, p)
+      }
+    }
+
+    // 3. Build sales data for bulk insert
+    const salesData = rows.map(row => {
+      const product = productMap.get(row.productName.toLowerCase())
+      if (!product) return null
+      const price = product.price ? Number(product.price) : 0
+      return {
+        user_id: userId,
+        dataset_id: datasetId,
+        product_id: product.id,
+        sale_date: row.date,
+        quantity: row.quantity,
+        revenue: price * row.quantity,
+        has_promo: row.hasPromo ?? false,
+        source: row.source ?? defaultSalesSource,
+      }
+    }).filter(Boolean) as any[]
+
+    // 4. Delete existing sales for same product+date (to avoid conflict)
+    const deleteConditions = salesData.map(s => ({
+      product_id: s.product_id,
+      sale_date: s.sale_date,
+    }))
+    
+    // Delete in batches of 100
+    for (let i = 0; i < deleteConditions.length; i += 100) {
+      const batch = deleteConditions.slice(i, i + 100)
+      await prisma.sales.deleteMany({
+        where: {
+          OR: batch.map(c => ({
+            product_id: c.product_id,
+            sale_date: c.sale_date,
+          }))
+        }
+      })
+    }
+
+    // 5. Bulk insert ALL sales in ONE query
+    console.log(`[BulkUpsert] Inserting ${salesData.length} sales: ${Date.now() - startTime}ms`)
+    await prisma.sales.createMany({
+      data: salesData,
+      skipDuplicates: true,
+    })
+
+    console.log(`[BulkUpsert] DONE: ${salesData.length} sales in ${Date.now() - startTime}ms`)
   } catch (error) {
     console.error('bulkUpsertSales failed', error)
     throw error

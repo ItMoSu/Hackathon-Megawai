@@ -27,9 +27,21 @@ export const getProducts = async (req: Request, res: Response) => {
       return res.status(401).json({ error: "User tidak terotentikasi" });
     }
 
-    const products = await prisma.products.findMany({
-      where: { user_id: String(userId) },
-      orderBy: { created_at: 'desc' } 
+    const allProducts = await prisma.products.findMany({
+      where: { user_id: String(userId), is_active: true },
+      orderBy: [
+        { price: 'desc' }, // Prefer products with price
+        { created_at: 'asc' }
+      ]
+    });
+
+    // Deduplicate by name (case-insensitive), keep one with price
+    const seenNames = new Set<string>();
+    const products = allProducts.filter(p => {
+      const lowerName = p.name.toLowerCase();
+      if (seenNames.has(lowerName)) return false;
+      seenNames.add(lowerName);
+      return true;
     });
 
     res.json({ success: true, data: products });
@@ -101,12 +113,18 @@ export const createProduct = async (req: Request, res: Response) => {
 
     const sanitizedName = sanitizeString(name);
 
-    const existing = await prisma.products.findFirst({
-      where: { user_id: userId, name: sanitizedName }
+    // Case-insensitive check for duplicate names
+    const allProducts = await prisma.products.findMany({
+      where: { user_id: userId },
+      select: { name: true }
     });
+    
+    const isDuplicate = allProducts.some(
+      p => p.name.toLowerCase() === sanitizedName.toLowerCase()
+    );
 
-    if (existing) {
-      return res.status(400).json({ error: "Produk dengan nama ini sudah ada" });
+    if (isDuplicate) {
+      return res.status(400).json({ error: `Produk "${sanitizedName}" sudah ada (tidak case-sensitive)` });
     }
 
     const newProduct = await prisma.products.create({
@@ -170,50 +188,82 @@ export const getProductsWithRanking = async (req: Request, res: Response) => {
     }
 
     // Get all products with their latest analytics
-    const products = await prisma.products.findMany({
+    const allProducts = await prisma.products.findMany({
       where: { user_id: String(userId), is_active: true },
-      orderBy: { created_at: 'desc' }
+      orderBy: [
+        { price: 'desc' }, // Prefer products with price
+        { created_at: 'asc' }
+      ]
     });
 
-    // Get latest analytics for each product
-    const productsWithAnalytics = await Promise.all(
-      products.map(async (product) => {
-        const latestAnalytics = await prisma.daily_analytics.findFirst({
-          where: { product_id: product.id },
-          orderBy: { metric_date: 'desc' }
-        });
+    // Deduplicate by name (case-insensitive), keep one with price
+    const seenNames = new Set<string>();
+    const products = allProducts.filter(p => {
+      const lowerName = p.name.toLowerCase();
+      if (seenNames.has(lowerName)) return false;
+      seenNames.add(lowerName);
+      return true;
+    });
 
-        // Get last 7 days sales for sparkline
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        
-        const recentSales = await prisma.sales.findMany({
-          where: {
-            product_id: product.id,
-            sale_date: { gte: sevenDaysAgo }
-          },
-          orderBy: { sale_date: 'asc' }
-        });
+    // Get product IDs for batch queries
+    const productIds = products.map(p => p.id);
 
-        const sparklineData = recentSales.map(s => Number(s.quantity));
-        const totalSales7d = sparklineData.reduce((a, b) => a + b, 0);
+    // Batch fetch analytics for all products in ONE query
+    const allAnalytics = await prisma.daily_analytics.findMany({
+      where: { product_id: { in: productIds } },
+      orderBy: { metric_date: 'desc' }
+    });
 
-        return {
-          ...product,
-          price: product.price ? Number(product.price) : null,
-          analytics: latestAnalytics ? {
-            momentum_combined: Number(latestAnalytics.momentum_combined || 0),
-            momentum_label: latestAnalytics.momentum_label || 'STABLE',
-            burst_score: Number(latestAnalytics.burst_score || 0),
-            burst_level: latestAnalytics.burst_level || 'NORMAL',
-            priority_score: Number(latestAnalytics.priority_score || 0),
-            priority_rank: latestAnalytics.priority_rank
-          } : null,
-          sparkline: sparklineData,
-          totalSales7d
-        };
-      })
-    );
+    // Group analytics by product_id, keep only latest
+    const analyticsMap = new Map<string, typeof allAnalytics[0]>();
+    for (const a of allAnalytics) {
+      if (!analyticsMap.has(a.product_id)) {
+        analyticsMap.set(a.product_id, a);
+      }
+    }
+
+    // Batch fetch sales for sparkline in ONE query
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const allRecentSales = await prisma.sales.findMany({
+      where: {
+        product_id: { in: productIds },
+        sale_date: { gte: sevenDaysAgo }
+      },
+      orderBy: { sale_date: 'asc' }
+    });
+
+    // Group sales by product_id
+    const salesMap = new Map<string, number[]>();
+    for (const s of allRecentSales) {
+      if (!salesMap.has(s.product_id)) {
+        salesMap.set(s.product_id, []);
+      }
+      salesMap.get(s.product_id)!.push(Number(s.quantity));
+    }
+
+    // Build result without additional DB calls
+    const productsWithAnalytics = products.map(product => {
+      const latestAnalytics = analyticsMap.get(product.id);
+      const sparklineData = salesMap.get(product.id) || [];
+      const totalSales7d = sparklineData.reduce((a, b) => a + b, 0);
+
+      return {
+        ...product,
+        price: product.price ? Number(product.price) : null,
+        analytics: latestAnalytics ? {
+          momentum_combined: Number(latestAnalytics.momentum_combined || 0),
+          momentum_label: latestAnalytics.momentum_label || 'STABLE',
+          burst_score: Number(latestAnalytics.burst_score || 0),
+          burst_level: latestAnalytics.burst_level || 'NORMAL',
+          priority_score: Number(latestAnalytics.priority_score || 0),
+          priority_rank: latestAnalytics.priority_rank
+        } : null,
+        sparkline: sparklineData,
+        totalSales7d
+      };
+    });
 
     // Sort by priority score (desc), then by total sales
     const sorted = productsWithAnalytics.sort((a, b) => {

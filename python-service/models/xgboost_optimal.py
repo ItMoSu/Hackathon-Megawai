@@ -701,20 +701,22 @@ class HybridBrain:
             # Ensemble
             final_pred = ml_weight * ml_pred + (1 - ml_weight) * rule_pred
             
-            # Smoothing (prevent extreme jumps)
+            # Lighter smoothing (allow more natural variation)
             if predictions:
                 prev = predictions[-1]['predicted_quantity']
-                max_change = prev * runtime_config.demand.smoothing_max_change_fraction
+                # Allow up to 50% change per day for more dynamic predictions
+                max_change = max(prev * 0.5, 1.0)
                 final_pred = max(prev - max_change, min(prev + max_change, final_pred))
 
-            final_pred = max(runtime_config.demand.min_prediction_quantity, round(final_pred, 1))
+            # Integer output, minimum 1
+            final_pred = max(1, round(final_pred))
 
             uncertainty = runtime_config.demand.forecast_uncertainty_z * self.std_error
             predictions.append({
                 'date': pred_date.strftime('%Y-%m-%d'),
-                'predicted_quantity': final_pred,
-                'lower_bound': max(0, round(final_pred - uncertainty, 1)),
-                'upper_bound': round(final_pred + uncertainty, 1),
+                'predicted_quantity': final_pred,  # Already integer from above
+                'lower_bound': max(0, round(final_pred - uncertainty)),
+                'upper_bound': round(final_pred + uncertainty),
                 'confidence': confidence,
                 'day_of_week': pred_date.dayofweek,
                 'is_weekend': pred_date.dayofweek in weekend_dows

@@ -300,7 +300,7 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
             </button>
           </div>
           <p className="text-lg text-gray-700">
-            Prediksi cerdas + rekomendasi bisnis untuk UMKM. {lastUpdated ? `Update ${lastUpdated.toLocaleTimeString()}` : ""}
+            Prediksi cerdas + rekomendasi bisnis untuk UMKM. {lastUpdated ? `Update ${lastUpdated.toLocaleTimeString("id-ID")}` : ""}
           </p>
           <p className="text-base text-gray-700">
             Data {dataQualityDays} hari | Akurasi ~{friendlyConf.pct}% | Kepercayaan {friendlyConf.overall}

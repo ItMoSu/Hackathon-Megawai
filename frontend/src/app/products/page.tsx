@@ -240,19 +240,27 @@ export default function ProductsPage() {
       const result = await res.json();
 
       if (!res.ok) {
-        // Handle specific error for duplicate name
         if (result.error?.includes('sudah ada') || result.error?.includes('already exist')) {
-          setError(`⚠️ Produk "${name.trim()}" sudah ada! Gunakan nama lain.`);
+          setError(`Produk "${name.trim()}" sudah ada! Gunakan nama lain.`);
         } else {
           setError(result.error || "Gagal menyimpan");
         }
         return;
       }
 
+      // Optimistic update - langsung tambah ke UI
+      if (result.data) {
+        setProducts(prev => [{
+          ...result.data,
+          analytics: null,
+          sparkline: [],
+          totalSales7d: 0
+        }, ...prev]);
+      }
+
       setName('');
       setUnit(''); 
       setPrice('');
-      fetchProducts();
       
     } catch (err: any) {
       setError(err.message || "Terjadi kesalahan");
@@ -275,10 +283,16 @@ export default function ProductsPage() {
     e.stopPropagation();
     setDeletingId(productId);
     setError('');
+    
+    // Optimistic update - hapus dari UI dulu
+    const previousProducts = [...products];
+    setProducts(prev => prev.filter(p => p.id !== productId));
+    
     try {
       const token = localStorage.getItem('token');
       if (!token) {
         setError('Session habis. Silakan login ulang.');
+        setProducts(previousProducts); // Rollback
         router.push('/login');
         return;
       }
@@ -291,9 +305,8 @@ export default function ProductsPage() {
         }
       });
 
-      console.log('Delete response:', { status: res.status, statusText: res.statusText });
-
       if (res.status === 401 || res.status === 403) {
+        setProducts(previousProducts); // Rollback
         localStorage.removeItem('token');
         localStorage.removeItem('user_id');
         router.push('/login');
@@ -301,6 +314,7 @@ export default function ProductsPage() {
       }
 
       if (!res.ok) {
+        setProducts(previousProducts); // Rollback on error
         const contentType = res.headers.get('content-type');
         if (contentType?.includes('text/html')) {
           throw new Error('Route tidak ditemukan (404). Backend mungkin perlu restart.');
@@ -318,15 +332,15 @@ export default function ProductsPage() {
       }
 
       const result = await res.json();
-      console.log('Delete result:', result);
       
-      if (result.success) {
-        fetchProducts();
-      } else {
+      if (!result.success) {
+        setProducts(previousProducts); // Rollback on error
         setError(result.error || 'Gagal menghapus produk');
       }
+      // Success - UI sudah terupdate
     } catch (err: any) {
       console.error('Delete error:', err);
+      setProducts(previousProducts); // Rollback on error
       setError(`Gagal menghapus: ${err.message || 'Network error'}`);
     } finally {
       setDeletingId(null);
@@ -459,9 +473,9 @@ export default function ProductsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 items-start">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
             {/* Form Add Product */}
-            <div className="lg:col-span-4">
+            <div className="lg:col-span-3">
               <Card className="sticky top-8 border-t-4 border-t-red-600 shadow-md">
                 <CardHeader>
                   <h2 className="text-lg font-bold flex items-center gap-2">
@@ -511,7 +525,7 @@ export default function ProductsPage() {
             </div>
 
             {/* Products List */}
-            <div className="lg:col-span-8">
+            <div className="lg:col-span-9">
               {loading ? (
                 <div className="flex flex-col items-center justify-center py-20 bg-white rounded-lg border border-gray-200">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mb-4"></div>

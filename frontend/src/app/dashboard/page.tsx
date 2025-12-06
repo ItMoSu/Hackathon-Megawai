@@ -80,8 +80,8 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    fetchProducts();
-    fetchSummary();
+    // Parallel fetch for faster loading
+    Promise.all([fetchProducts(), fetchSummary()]);
     
     // Refresh setiap 5 menit
     const interval = setInterval(fetchSummary, 5 * 60 * 1000);
@@ -186,57 +186,31 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
             
             {/* Sidebar List Produk */}
-            <Card className="lg:col-span-3 lg:sticky lg:top-6 shadow-sm">
+            <Card className="lg:col-span-2 lg:sticky lg:top-6 shadow-sm">
               <CardHeader className="pb-3 border-b border-gray-100">
                 <h3 className="text-base font-semibold text-gray-900">List Produk</h3>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="max-h-[600px] overflow-y-auto p-4 space-y-4">
-                  
-                  {/* Quick Ranking */}
-                  {summary?.top_products && (
-                    <div>
-                      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Top 3 Hari Ini</p>
-                      <div className="space-y-2">
-                        {summary.top_products.slice(0, 3).map((top, idx) => (
-                          <div key={top.product_id} className="flex justify-between items-center text-sm p-2 bg-gray-50 rounded border border-gray-100">
-                            <span className="font-medium text-gray-700 truncate w-32">
-                              #{idx + 1} {top.product_name}
-                            </span>
-                            <Badge variant="secondary" className="text-xs font-normal">
-                              {top.quantity} sold
-                            </Badge>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* All Products */}
-                  <div>
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Semua Produk</p>
-                    <div className="space-y-1">
-                      {products.map((p) => (
-                        <button
-                          key={p.id}
-                          onClick={() => setSelectedId(p.id)}
-                          className={`w-full text-left px-3 py-2 rounded-md text-sm transition-all duration-200 ${
-                            selectedId === p.id
-                              ? "bg-red-50 text-red-700 font-medium border border-red-200 shadow-sm"
-                              : "hover:bg-gray-100 text-gray-600 hover:text-gray-900"
-                          }`}
-                        >
-                          {p.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                <div className="max-h-[600px] overflow-y-auto p-2 space-y-1">
+                  {products.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => setSelectedId(p.id)}
+                      className={`w-full text-left px-2 py-2 rounded-md text-sm transition-all duration-150 truncate ${
+                        selectedId === p.id
+                          ? "bg-red-50 text-red-700 font-medium border border-red-200"
+                          : "hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                      }`}
+                    >
+                      {p.name}
+                    </button>
+                  ))}
                 </div>
               </CardContent>
             </Card>
 
             {/* Intelligence Dashboard View */}
-            <div className="lg:col-span-9">
+            <div className="lg:col-span-10">
               {selectedId ? (
                 <IntelligenceDashboard productId={selectedId} />
               ) : (
