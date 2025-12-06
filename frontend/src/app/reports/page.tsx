@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { AlertTriangle, Trophy, Calendar, TrendingUp, TrendingDown, DollarSign, Package, Lightbulb, BarChart3, ArrowUpRight, ArrowDownRight, Minus, RefreshCcw } from 'lucide-react';
 import { fetchWithAuth } from '@/lib/api';
-import Navbar from '@/components/ui/Navbar';
 
 interface ReportData {
   dateRange: {
