@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { API_URL } from "@/lib/api";
 
 const CalendarIcon = () => (
 <svg className="w-5 h-5 text-gray-400 absolute left-3 top-3.5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -71,7 +72,7 @@ const handleSubmit = async (e: React.FormEvent) => {
     }
 
     try {
-    const res = await fetch("http://localhost:5000/api/sales", {
+    const res = await fetch(`${API_URL}/api/sales`, {
         method: "POST",
         headers: {
         "Content-Type": "application/json",

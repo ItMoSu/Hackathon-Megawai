@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 const siteConfig = {
-  name: "MEGAWAI",
+  name: "Megaw AI",
   description: "AI-Powered Sales Intelligence untuk UMKM Indonesia. Prediksi penjualan, analisis tren, dan rekomendasi bisnis cerdas.",
   url: "https://megawai.id",
   ogImage: "/og-image.png",
@@ -39,9 +39,9 @@ export const metadata: Metadata = {
   },
   description: siteConfig.description,
   keywords: siteConfig.keywords,
-  authors: [{ name: "MEGAWAI Team" }],
-  creator: "MEGAWAI",
-  publisher: "MEGAWAI",
+  authors: [{ name: "Megaw AI Team" }],
+  creator: "Megaw AI",
+  publisher: "Megaw AI",
   robots: {
     index: true,
     follow: true,
@@ -74,7 +74,7 @@ export const metadata: Metadata = {
     title: siteConfig.name,
     description: siteConfig.description,
     images: [siteConfig.ogImage],
-    creator: "@megawai_id",
+    creator: "@megaw_ai",
   },
   icons: {
     icon: "/favicon.ico",

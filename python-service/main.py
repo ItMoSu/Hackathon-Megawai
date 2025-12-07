@@ -14,11 +14,21 @@ from typing import Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator, Field
+import gc
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
+
+# Constants for validation
+MAX_SALES_DATA_POINTS = 50000  # Support up to 50k rows for 1+ year data
+MAX_FORECAST_DAYS = 30
+MAX_PRODUCT_ID_LENGTH = 100
+CHUNK_SIZE = 10000  # Process in chunks for memory efficiency
 
 # Ensure local imports resolve when running as a script
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -30,8 +40,13 @@ from models.ensemble import EnsemblePredictor  # noqa: E402
 from models.inventory_optimizer import InventoryOptimizer  # noqa: E402
 from models.profit_analyzer import ProfitAnalyzer  # noqa: E402
 from models.weekly_report_ranker import WeeklyReportRanker, RankingStrategy  # noqa: E402
+from utils.cache import model_cache  # noqa: E402
 
-app = FastAPI(title="AI Market Pulse ML Service")
+app = FastAPI(
+    title="AI Market Pulse ML Service",
+    description="ML predictions for sales forecasting",
+    version="1.1.0"
+)
 
 # CORS
 app.add_middleware(
@@ -132,20 +147,16 @@ class HybridForecastRequest(BaseModel):
 
 class UniversalPredictRequest(BaseModel):
     """Request model for universal prediction endpoint"""
-    sales_data: List[Dict]
-    forecast_days: int = 7
-    product_id: Optional[str] = None
-
-    @validator('forecast_days')
-    def validate_forecast_days(cls, v):
-        if v < 1 or v > 30:
-            raise ValueError('forecast_days must be between 1 and 30')
-        return v
+    sales_data: List[Dict] = Field(..., min_items=3, max_items=MAX_SALES_DATA_POINTS)
+    forecast_days: int = Field(default=7, ge=1, le=MAX_FORECAST_DAYS)
+    product_id: Optional[str] = Field(default=None, max_length=MAX_PRODUCT_ID_LENGTH)
 
     @validator('sales_data')
     def validate_sales_data(cls, v):
         if not v or len(v) < 3:
             raise ValueError('sales_data must have at least 3 data points')
+        if len(v) > MAX_SALES_DATA_POINTS:
+            raise ValueError(f'sales_data cannot exceed {MAX_SALES_DATA_POINTS} data points')
         return v
 
 
@@ -154,8 +165,40 @@ def root():
     return {
         "service": "AI Market Pulse ML Service",
         "status": "running",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "base_dir": BASE_DIR
+    }
+
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint for deployment monitoring"""
+    return {
+        "status": "healthy",
+        "service": "ml",
+        "timestamp": datetime.now().isoformat(),
+        "cache_stats": model_cache.stats()
+    }
+
+
+@app.get("/api/ml/cache/stats")
+def cache_stats():
+    """Get model cache statistics"""
+    return {
+        "success": True,
+        "cache": model_cache.stats()
+    }
+
+
+@app.post("/api/ml/cache/clear")
+def clear_cache():
+    """Clear model cache and run garbage collection"""
+    model_cache.clear()
+    gc.collect()
+    return {
+        "success": True,
+        "message": "Cache cleared",
+        "cache": model_cache.stats()
     }
 
 
@@ -271,16 +314,27 @@ def get_forecast(productId: str, days: int = Query(7, ge=1, le=30)):
                 }
             )
 
-        product_forecaster = HybridBrain(product_id=productId)
-        success = product_forecaster.load_model(productId, model_path)
-        if not success:
-            logger.error(f"Failed to load model for product: {productId} from {model_path}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Model file found but failed to load. It may be corrupted. Try retraining the model."
-            )
+        # Check cache first
+        cache_key = f"forecast_{productId}"
+        cached_forecaster = model_cache.get(cache_key)
+        
+        if cached_forecaster:
+            logger.info(f"Cache hit for {productId}")
+            product_forecaster = cached_forecaster
+        else:
+            logger.info(f"Cache miss for {productId}, loading model...")
+            product_forecaster = HybridBrain(product_id=productId)
+            success = product_forecaster.load_model(productId, model_path)
+            if not success:
+                logger.error(f"Failed to load model for product: {productId} from {model_path}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Model file found but failed to load. It may be corrupted. Try retraining the model."
+                )
+            # Cache the loaded model
+            model_cache.set(cache_key, product_forecaster)
 
-        logger.info(f"Loaded model for {productId}, generating predictions...")
+        logger.info(f"Generating predictions for {productId}...")
         predictions = product_forecaster.predict_next_days(days)
 
         # Safety check for empty predictions
@@ -325,38 +379,61 @@ def predict_universal(request: UniversalPredictRequest):
     """
     Universal prediction endpoint - works with any sales data without pre-trained model.
     Uses physics-based prediction with on-the-fly training.
-
-    This is the main endpoint used by the backend for product analysis.
+    
+    Optimized for large datasets (30k-50k rows).
     """
+    import pandas as pd
+    import numpy as np
+    
     try:
         sales_data = request.sales_data
         forecast_days = request.forecast_days
         product_id = request.product_id or "universal"
+        data_size = len(sales_data)
 
-        logger.info(f"Universal predict: {len(sales_data)} data points, {forecast_days} days forecast")
+        logger.info(f"Universal predict: {data_size} data points, {forecast_days} days forecast")
 
-        # Validate and clean sales data
         if not sales_data:
             raise HTTPException(status_code=400, detail="sales_data cannot be empty")
 
-        # Convert to DataFrame format expected by HybridBrain
-        import pandas as pd
+        # OPTIMIZED: For large datasets, use chunked processing
         try:
-            df = pd.DataFrame(sales_data)
+            if data_size > CHUNK_SIZE:
+                # Process in chunks for memory efficiency
+                logger.info(f"Large dataset detected, processing in chunks...")
+                chunks = []
+                for i in range(0, data_size, CHUNK_SIZE):
+                    chunk_data = sales_data[i:i + CHUNK_SIZE]
+                    chunk_df = pd.DataFrame(chunk_data)
+                    chunks.append(chunk_df)
+                df = pd.concat(chunks, ignore_index=True)
+                del chunks  # Free memory
+            else:
+                df = pd.DataFrame(sales_data)
+            
             if 'date' not in df.columns or 'quantity' not in df.columns:
                 raise HTTPException(
                     status_code=400,
                     detail="sales_data must contain 'date' and 'quantity' fields"
                 )
 
-            # Ensure proper types
-            df['date'] = pd.to_datetime(df['date'])
-            df['quantity'] = pd.to_numeric(df['quantity'], errors='coerce').fillna(0)
-            df = df.sort_values('date')
+            # OPTIMIZED: Use more efficient dtypes
+            df['date'] = pd.to_datetime(df['date'], errors='coerce')
+            df['quantity'] = pd.to_numeric(df['quantity'], errors='coerce').fillna(0).astype(np.float32)
+            
+            # Drop invalid dates
+            df = df.dropna(subset=['date'])
+            
+            # Sort and dedupe efficiently
+            df = df.sort_values('date').drop_duplicates(subset=['date'], keep='last')
+            
+            # For very large datasets, sample recent data for faster prediction
+            if len(df) > 365:
+                logger.info(f"Sampling last 365 days from {len(df)} data points for faster prediction")
+                df = df.tail(365)
 
-            # Remove duplicates, keep last
-            df = df.drop_duplicates(subset=['date'], keep='last')
-
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"Data parsing error: {e}")
             raise HTTPException(status_code=400, detail=f"Invalid sales_data format: {str(e)}")
@@ -412,7 +489,7 @@ def predict_universal(request: UniversalPredictRequest):
         # Detect burst
         burst = _detect_burst(df)
 
-        return {
+        result = {
             'success': True,
             'product_id': product_id,
             'model_type': 'trained' if model_loaded else 'on-the-fly',
@@ -423,24 +500,60 @@ def predict_universal(request: UniversalPredictRequest):
             'burst': burst,
             'generated_at': datetime.now().isoformat()
         }
+        
+        # Cleanup DataFrame to free memory
+        del df
+        gc.collect()
+        
+        return result
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Universal predict error: {e}", exc_info=True)
+        gc.collect()  # Cleanup on error too
         raise HTTPException(status_code=500, detail=str(e))
 
 
 def _generate_fallback_predictions(df, days: int) -> List[Dict]:
-    """Generate physics-based predictions with realistic variation"""
+    """Generate physics-based predictions - adaptive based on data quantity"""
     import pandas as pd
     import numpy as np
 
     if df.empty:
         return []
 
+    data_len = len(df)
+    
+    # Determine data tier and scaling factors
+    if data_len >= 60:  # 2+ months
+        variation_scale = 1.0
+        trend_sensitivity = 0.15
+        dow_clamp = (0.80, 1.25)
+        confidence = 'HIGH'
+    elif data_len >= 30:  # 1+ month
+        variation_scale = 0.8
+        trend_sensitivity = 0.12
+        dow_clamp = (0.85, 1.20)
+        confidence = 'MEDIUM'
+    elif data_len >= 14:  # 2+ weeks
+        variation_scale = 0.6
+        trend_sensitivity = 0.08
+        dow_clamp = (0.88, 1.15)
+        confidence = 'MEDIUM'
+    elif data_len >= 7:  # 1+ week
+        variation_scale = 0.4
+        trend_sensitivity = 0.05
+        dow_clamp = (0.92, 1.10)
+        confidence = 'LOW'
+    else:  # < 7 days - very conservative
+        variation_scale = 0.2
+        trend_sensitivity = 0.02
+        dow_clamp = (0.95, 1.05)
+        confidence = 'LOW'
+
     # Calculate baseline and trend from recent data
-    recent = df.tail(14)
+    recent = df.tail(min(14, data_len))
     baseline = recent['quantity'].mean() if len(recent) > 0 else 1
     std = recent['quantity'].std() if len(recent) > 1 else max(baseline * 0.2, 1)
     
@@ -454,55 +567,75 @@ def _generate_fallback_predictions(df, days: int) -> List[Dict]:
     predictions = []
     last_date = df['date'].max()
 
-    # Day of week factors (more variation)
-    dow_factors = {
-        0: 0.85,  # Monday - recovery day
-        1: 0.95,  # Tuesday
-        2: 1.00,  # Wednesday
-        3: 1.05,  # Thursday
-        4: 1.20,  # Friday - pre-weekend
-        5: 1.30,  # Saturday - peak
-        6: 0.80,  # Sunday - rest day
-    }
+    # Default DOW factors
+    default_dow = {0: 0.92, 1: 0.96, 2: 1.00, 3: 1.02, 4: 1.10, 5: 1.15, 6: 0.88}
+    
+    # Learn DOW patterns from data if enough data
+    learned_dow = {}
+    if data_len >= 7:
+        dow_means = df.groupby(df['date'].dt.dayofweek)['quantity'].mean()
+        global_mean = df['quantity'].mean()
+        if global_mean > 0:
+            for dow, mean_val in dow_means.items():
+                raw_factor = mean_val / global_mean
+                learned_dow[dow] = max(dow_clamp[0], min(dow_clamp[1], raw_factor))
 
+    prev_pred = None
     for i in range(1, days + 1):
         pred_date = last_date + timedelta(days=i)
         day_of_week = pred_date.weekday()
         day_of_month = pred_date.day
 
-        # Apply DOW factor
-        dow_factor = dow_factors.get(day_of_week, 1.0)
+        # DOW factor (scaled by data quality)
+        if learned_dow and day_of_week in learned_dow:
+            raw_dow = learned_dow[day_of_week]
+        else:
+            raw_dow = default_dow.get(day_of_week, 1.0)
+        dow_factor = 1.0 + (raw_dow - 1.0) * variation_scale
 
-        # Payday factor (stronger effect)
+        # Payday factor (scaled)
         if day_of_month >= 25 or day_of_month <= 5:
-            payday_factor = 1.25
-        elif day_of_month >= 20:
-            payday_factor = 0.90  # Pre-payday saving
+            payday_factor = 1.0 + (0.08 * variation_scale)
+        elif day_of_month >= 12 and day_of_month <= 18:
+            payday_factor = 1.0 - (0.05 * variation_scale)
         else:
             payday_factor = 1.0
 
-        # Apply trend
-        trend_adjustment = trend * i
+        # Apply trend (scaled by sensitivity)
+        trend_adjustment = trend * i * trend_sensitivity
         base_pred = max(1, baseline + trend_adjustment)
         
-        # Calculate prediction with factors
+        # Calculate prediction
         predicted = base_pred * dow_factor * payday_factor
         
-        # Add small deterministic variation based on date (not random)
-        date_variation = 1 + (np.sin(day_of_month * 0.3 + day_of_week * 0.5) * 0.08)
-        predicted = predicted * date_variation
+        # Small variation (scaled)
+        date_seed = (day_of_month * 3 + pred_date.month * 7 + day_of_week * 2) % 100
+        max_var = 0.05 * variation_scale
+        variation = 1.0 + ((date_seed - 50) / 100) * max_var
+        predicted = predicted * variation
+        
+        # Smooth transitions (stricter for less data)
+        max_change = 0.15 + (0.15 * variation_scale)
+        if prev_pred is not None and prev_pred > 0:
+            change_ratio = predicted / prev_pred
+            if change_ratio > (1 + max_change):
+                predicted = prev_pred * (1 + max_change * 0.8)
+            elif change_ratio < (1 - max_change):
+                predicted = prev_pred * (1 - max_change * 0.8)
 
-        # Ensure minimum of 1 and integer output
-        predicted = max(1, predicted)
-        lower = max(0, predicted - std)
-        upper = predicted + std
+        # Integer output
+        predicted = int(max(1, round(predicted)))
+        lower = int(max(0, round(predicted - std)))
+        upper = int(round(predicted + std))
+        
+        prev_pred = predicted
 
         predictions.append({
             'date': pred_date.strftime('%Y-%m-%d'),
-            'predicted_quantity': round(predicted),  # Integer!
-            'lower_bound': round(max(0, lower)),
-            'upper_bound': round(upper),
-            'confidence': 'MEDIUM' if len(df) >= 7 else 'LOW'
+            'predicted_quantity': predicted,
+            'lower_bound': lower,
+            'upper_bound': upper,
+            'confidence': confidence
         })
 
     return predictions

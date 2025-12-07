@@ -63,40 +63,51 @@ export async function register(req: Request, res: Response) {
       return res.status(400).json({ success: false, error: 'Email sudah terdaftar' });
     }
 
-    const { data: created, error: createError } =
-      await supabaseAdmin.auth.admin.createUser({
+    // Use signUp instead of admin.createUser to trigger email verification
+    const { data: signUpData, error: signUpError } =
+      await supabaseAdmin.auth.signUp({
         email,
         password,
-        email_confirm: true,
-        user_metadata: name ? { full_name: name } : {},
+        options: {
+          data: name ? { full_name: name } : {},
+          emailRedirectTo: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?verified=true`,
+        },
       });
 
-    if (createError || !created?.user) {
-      const message = createError?.message || 'Gagal membuat akun';
+    if (signUpError || !signUpData?.user) {
+      const message = signUpError?.message || 'Gagal membuat akun';
       return res.status(500).json({ success: false, error: message });
     }
 
-    const { data: sessionData, error: signInError } =
-      await supabaseAdmin.auth.signInWithPassword({ email, password });
-
-    if (signInError || !sessionData.session) {
-      const message = signInError?.message || 'Gagal mendapatkan token';
-      return res.status(500).json({ success: false, error: message });
-    }
-
-    const { access_token, refresh_token } = sessionData.session;
-
-    return res.status(201).json({
-      success: true,
-      data: {
-        access_token,
-        refresh_token,
-        user: {
-          id: created.user.id,
-          email: created.user.email,
+    // Check if email confirmation is required
+    if (signUpData.session) {
+      // Email confirm disabled in Supabase settings - user logged in immediately
+      const { access_token, refresh_token } = signUpData.session;
+      return res.status(201).json({
+        success: true,
+        data: {
+          access_token,
+          refresh_token,
+          user: {
+            id: signUpData.user.id,
+            email: signUpData.user.email,
+          },
         },
-      },
-    });
+      });
+    } else {
+      // Email confirmation required - tell user to check email
+      return res.status(201).json({
+        success: true,
+        message: 'Registrasi berhasil! Silakan cek email Anda untuk verifikasi.',
+        data: {
+          user: {
+            id: signUpData.user.id,
+            email: signUpData.user.email,
+          },
+          requires_verification: true,
+        },
+      });
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Terjadi kesalahan';
     return res.status(500).json({ success: false, error: message });

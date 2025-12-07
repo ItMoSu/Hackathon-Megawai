@@ -1,5 +1,8 @@
 // frontend/src/lib/api.ts
 
+// API Base URL - gunakan environment variable untuk production
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
 // Helper untuk mendapatkan token
 export function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;

@@ -10,6 +10,9 @@ import Navbar from "@/components/ui/Navbar";
 import { ArrowLeft, Package, TrendingUp, TrendingDown, Minus, Edit2, Save, X, Trash2, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { API_URL } from "@/lib/api";
+import { getAuthHeaders, handleAuthError } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 const UNIT_OPTIONS = [
   { value: 'pcs', label: 'Pcs' },
@@ -69,27 +72,16 @@ export default function ProductDetailClient({ productId }: Props) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const getAuthHeaders = useCallback(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    };
-  }, []);
-
   const fetchProductDetail = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`http://localhost:5000/api/products/${productId}`, {
+      const res = await fetch(`${API_URL}/api/products/${productId}`, {
         headers: getAuthHeaders(),
         cache: 'no-store'
       });
 
-      if (res.status === 401) {
-        router.push('/login');
-        return;
-      }
+      if (handleAuthError(res.status, router)) return;
 
       if (!res.ok) {
         throw new Error('Produk tidak ditemukan');
@@ -107,7 +99,7 @@ export default function ProductDetailClient({ productId }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [productId, getAuthHeaders, router]);
+  }, [productId, router]);
 
   useEffect(() => {
     if (productId) {
@@ -118,7 +110,7 @@ export default function ProductDetailClient({ productId }: Props) {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/products/${productId}`, {
+      const res = await fetch(`${API_URL}/api/products/${productId}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -133,7 +125,7 @@ export default function ProductDetailClient({ productId }: Props) {
         setIsEditing(false);
       }
     } catch (err) {
-      console.error(err);
+      logger.error('Save product error:', err);
     } finally {
       setSaving(false);
     }
@@ -142,7 +134,7 @@ export default function ProductDetailClient({ productId }: Props) {
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/products/${productId}`, {
+      const res = await fetch(`${API_URL}/api/products/${productId}`, {
         method: 'DELETE',
         headers: getAuthHeaders()
       });
@@ -155,7 +147,7 @@ export default function ProductDetailClient({ productId }: Props) {
         alert(result.error || 'Gagal menghapus produk');
       }
     } catch (err) {
-      console.error(err);
+      logger.error('Delete product error:', err);
       alert('Gagal menghapus produk');
     } finally {
       setDeleting(false);
