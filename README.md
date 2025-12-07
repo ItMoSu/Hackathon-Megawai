@@ -21,7 +21,7 @@ Thanks to these amazing people:
 
 
 ## 🎥 Video Demo
-![Video](https://youtu.be/Hmn-DI598RI)
+[![Video Demo](https://img.youtube.com/vi/Hmn-DI598RI/0.jpg)](https://youtu.be/Hmn-DI598RI)
 
 ## 📸 Screenshots
 
