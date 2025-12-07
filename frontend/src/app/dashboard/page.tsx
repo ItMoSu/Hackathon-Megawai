@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { IntelligenceDashboard } from "@/components/IntelligenceDashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -9,7 +10,7 @@ import { Button } from "@/components/ui/Button";
 import Navbar from '@/components/ui/Navbar';
 import { ArrowUpRight, ArrowDownRight, AlertTriangle, TrendingUp, RefreshCcw } from "lucide-react";
 import { API_URL } from "@/lib/api";
-import { getToken } from "@/lib/auth";
+import { getToken, requireAuth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
 const containerVariants = {
@@ -52,10 +53,20 @@ type DashboardSummary = {
 type Product = { id: string; name: string; unit?: string };
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Check auth on mount
+  useEffect(() => {
+    if (!requireAuth(router)) {
+      return;
+    }
+    setIsAuthenticated(true);
+  }, [router]);
 
   const fetchProducts = async () => {
     try {
@@ -93,18 +104,29 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+    
     // Parallel fetch for faster loading
     Promise.all([fetchProducts(), fetchSummary()]);
     
     // Refresh setiap 5 menit
     const interval = setInterval(fetchSummary, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isAuthenticated]);
 
   // Helper untuk format Rupiah
   const formatRupiah = (num: number) => {
     return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR" }).format(num);
   };
+
+  // Don't render if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 text-slate-900 selection:bg-red-600 selection:text-white">
@@ -122,7 +144,7 @@ export default function DashboardPage() {
             className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
           >
             <div>
-              <h1 className="text-3xl font-bold tracking-tight text-gray-900">Dashboard Overview</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-gray-900">Dashboard Overview</h1>
               <p className="text-sm text-gray-500 mt-1">
                 Pantau performa harian & deteksi anomali penjualan.
               </p>
@@ -228,7 +250,7 @@ export default function DashboardPage() {
             {/* Sidebar List Produk */}
             <Card className="lg:col-span-2 lg:sticky lg:top-6 shadow-sm">
               <CardHeader className="pb-3 border-b border-gray-100">
-                <h3 className="text-base font-semibold text-gray-900">Daftar Produk</h3>
+                <h3 className="text-sm font-semibold text-gray-900">Daftar Produk</h3>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="max-h-[600px] overflow-y-auto p-2 space-y-1">

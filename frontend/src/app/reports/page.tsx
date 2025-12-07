@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { AlertTriangle, Trophy, Calendar, TrendingUp, TrendingDown, DollarSign, Package, Lightbulb, BarChart3, ArrowUpRight, ArrowDownRight, Minus, RefreshCcw } from 'lucide-react';
 import { fetchWithAuth, API_URL } from '@/lib/api';
+import { requireAuth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 import Navbar from '@/components/ui/Navbar';
 
@@ -52,9 +54,19 @@ interface ReportData {
 }
 
 export default function ReportsPage() {
+  const router = useRouter();
   const [report, setReport] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Check auth on mount
+  useEffect(() => {
+    if (!requireAuth(router)) {
+      return;
+    }
+    setIsAuthenticated(true);
+  }, [router]);
 
   const loadData = async () => {
     setLoading(true);
@@ -76,8 +88,9 @@ export default function ReportsPage() {
   };
 
   useEffect(() => {
+    if (!isAuthenticated) return;
     loadData();
-  }, []);
+  }, [isAuthenticated]);
 
   const formatRupiah = (num: number) => {
     if (!num && num !== 0) return 'Rp 0';
@@ -138,6 +151,15 @@ export default function ReportsPage() {
         return <Badge className="bg-yellow-100 text-yellow-700">⚠️ {displayStatus}</Badge>;
     }
   };
+
+  // Don't render if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

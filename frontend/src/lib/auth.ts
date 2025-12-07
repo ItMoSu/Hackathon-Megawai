@@ -55,7 +55,7 @@ export function handleAuthError(status: number, router?: { push: (url: string) =
 }
 
 /**
- * Check auth and redirect to landing if not authenticated
+ * Check auth and redirect to login if not authenticated
  * Use this at the start of protected pages
  */
 export function requireAuth(router: { push: (url: string) => void }): boolean {
@@ -63,7 +63,7 @@ export function requireAuth(router: { push: (url: string) => void }): boolean {
   const userId = getUserId();
   
   if (!token || !userId) {
-    router.push('/');
+    router.push('/login');
     return false;
   }
   return true;

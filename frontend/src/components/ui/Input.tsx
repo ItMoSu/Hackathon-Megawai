@@ -10,14 +10,14 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         return (
         <div className="w-full">
             {label && (
-            <label className="mb-2 block text-sm font-bold text-secondary">
+            <label className="mb-1.5 block text-xs font-semibold text-gray-700">
                 {label}
             </label>
             )}
 
             <input
             type={type}
-            className={`flex h-12 w-full rounded-lg border bg-white px-4 py-2 text-sm text-black shadow-sm transition-colors 
+            className={`flex h-10 w-full rounded-lg border bg-white px-3 py-2 text-sm text-black shadow-sm transition-colors 
                 file:border-0 file:bg-transparent file:text-sm file:font-medium 
                 placeholder:text-gray-400 
                 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 
@@ -31,7 +31,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             {...props}
             />
             {error && (
-            <p className="mt-1 text-sm text-danger font-medium">{error}</p>
+            <p className="mt-1 text-xs text-danger font-medium">{error}</p>
             )}
         </div>
         );

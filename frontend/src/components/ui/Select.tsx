@@ -16,13 +16,13 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="w-full">
         {label && (
-          <label className="mb-2 block text-sm font-bold text-secondary">
+          <label className="mb-1.5 block text-xs font-semibold text-gray-700">
             {label}
           </label>
         )}
         <div className="relative">
           <select
-            className={`flex h-12 w-full appearance-none rounded-lg border bg-white px-4 py-2 pr-8 text-sm text-black shadow-sm transition-colors 
+            className={`flex h-10 w-full appearance-none rounded-lg border bg-white px-3 py-2 pr-8 text-sm text-black shadow-sm transition-colors 
             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50
             ${
               error 
@@ -40,13 +40,13 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
               </option>
             ))}
           </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </div>
         </div>
-        {error && <p className="mt-1 text-sm text-danger font-medium">{error}</p>}
+        {error && <p className="mt-1 text-xs text-danger font-medium">{error}</p>}
       </div>
     );
   }

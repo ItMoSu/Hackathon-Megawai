@@ -66,11 +66,11 @@ useEffect(() => {
             
             {/* LOGO */}
             <Link href="/" className="flex items-center gap-2 group">
-              <div className="w-10 h-10 bg-[#DC2626] rounded-xl flex items-center justify-center text-white transform group-hover:rotate-12 transition-transform duration-300">
-                <ShoppingBag size={20} />
+              <div className="w-9 h-9 bg-[#DC2626] rounded-xl flex items-center justify-center text-white transform group-hover:rotate-12 transition-transform duration-300">
+                <ShoppingBag size={18} />
               </div>
-                <span className="text-2xl font-bold text-black">
-                  MEGAW <span className="text-[#DC2626] ml-2">AI</span>
+                <span className="text-xl font-bold text-black">
+                  MEGAW <span className="text-[#DC2626] ml-1">AI</span>
                 </span>
             </Link>
 

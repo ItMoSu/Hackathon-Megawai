@@ -46,11 +46,17 @@ export default function InputPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Check auth on mount
   useEffect(() => {
+    if (!requireAuth(router)) {
+      return;
+    }
+    setIsAuthenticated(true);
     setIsMounted(true);
     setSaleDate(getTodayDate());
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (!isMounted) return;
@@ -312,6 +318,15 @@ export default function InputPage() {
   const totalProducts = Object.values(entries).filter(v => v > 0).length;
   const totalQuantity = Object.values(entries).reduce((a, b) => a + b, 0);
 
+  // Don't render if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+      </div>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-gray-50 text-black selection:bg-[#DC2626] selection:text-white">
       <Navbar />
@@ -320,10 +335,10 @@ export default function InputPage() {
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-red-100 rounded-lg">
-              <FolderOpen className="text-[#DC2626]" size={28} />
+              <FolderOpen className="text-[#DC2626]" size={24} />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-black tracking-tight">
+              <h1 className="text-xl font-bold text-black tracking-tight">
                 Input Penjualan Harian
               </h1>
               <p className="text-gray-500 text-sm">
@@ -564,16 +579,16 @@ export default function InputPage() {
             <CardContent className="p-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-1">
-                  <p className="text-sm text-gray-500">Ringkasan Input</p>
+                  <p className="text-xs text-gray-500">Ringkasan Input</p>
                   <div className="flex items-center gap-4">
                     <div>
-                      <span className="text-3xl font-bold text-gray-900">{totalProducts}</span>
-                      <span className="text-gray-500 ml-1">produk</span>
+                      <span className="text-2xl font-bold text-gray-900">{totalProducts}</span>
+                      <span className="text-gray-500 text-sm ml-1">produk</span>
                     </div>
-                    <div className="w-px h-8 bg-gray-200"></div>
+                    <div className="w-px h-6 bg-gray-200"></div>
                     <div>
-                      <span className="text-3xl font-bold text-green-600">{totalQuantity}</span>
-                      <span className="text-gray-500 ml-1">total item</span>
+                      <span className="text-2xl font-bold text-green-600">{totalQuantity}</span>
+                      <span className="text-gray-500 text-sm ml-1">total item</span>
                     </div>
                   </div>
                 </div>
@@ -582,13 +597,13 @@ export default function InputPage() {
                   onClick={handleSubmit}
                   disabled={totalProducts === 0 || isSubmitting}
                   isLoading={isSubmitting}
-                  className={`px-8 py-3 text-lg font-bold shadow-lg transition-all ${
+                  className={`px-6 py-2.5 text-sm font-bold shadow-lg transition-all ${
                     totalProducts > 0 
                       ? 'bg-green-600 hover:bg-green-700 text-white' 
                       : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   }`}
                 >
-                  <Save className="w-5 h-5 mr-2" />
+                  <Save className="w-4 h-4 mr-2" />
                   Simpan Semua
                 </Button>
               </div>

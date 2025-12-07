@@ -59,6 +59,15 @@ export default function ProductsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Check auth on mount
+  useEffect(() => {
+    if (!requireAuth(router)) {
+      return;
+    }
+    setIsAuthenticated(true);
+  }, [router]);
 
   // Pagination logic
   const totalPages = Math.ceil(products.length / ITEMS_PER_PAGE);
@@ -121,8 +130,9 @@ export default function ProductsPage() {
   };
 
   useEffect(() => {
+    if (!isAuthenticated) return;
     fetchProducts();
-  }, []);
+  }, [isAuthenticated]);
 
   // Validation regex patterns
   const PRODUCT_NAME_REGEX = /^[a-zA-Z0-9\s\-\_\.\,]+$/;
@@ -390,6 +400,15 @@ export default function ProductsPage() {
     );
   };
 
+  // Don't render if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 text-slate-900 selection:bg-red-600 selection:text-white">
       <Navbar />
@@ -398,7 +417,7 @@ export default function ProductsPage() {
           {/* Header */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight text-gray-900">Manajemen Produk</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-gray-900">Manajemen Produk</h1>
               <p className="text-sm text-gray-500 mt-1">
                 Kelola katalog, lihat performa & ranking produk.
               </p>
@@ -441,11 +460,11 @@ export default function ProductsPage() {
             <div className="lg:col-span-3">
               <Card className="sticky top-8 border-t-4 border-t-red-600 shadow-md">
                 <CardHeader>
-                  <h2 className="text-lg font-bold flex items-center gap-2">
-                    <Plus className="w-5 h-5 text-red-600" />
+                  <h2 className="text-base font-bold flex items-center gap-2">
+                    <Plus className="w-4 h-4 text-red-600" />
                     Tambah Produk Baru
                   </h2>
-                  <p className="text-sm text-gray-500">Daftarkan menu jualanmu di sini.</p>
+                  <p className="text-xs text-gray-500">Daftarkan menu jualanmu di sini.</p>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleSubmit} className="space-y-5">
@@ -510,8 +529,8 @@ export default function ProductsPage() {
                   <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50 border-b">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                       <div className="flex items-center gap-2">
-                        <Sparkles className="w-5 h-5 text-red-600" />
-                        <h3 className="font-bold text-gray-900">Product Ranking</h3>
+                        <Sparkles className="w-4 h-4 text-red-600" />
+                        <h3 className="font-semibold text-sm text-gray-900">Product Ranking</h3>
                       </div>
                       <div className="flex items-center gap-2 sm:ml-auto">
                         <Badge variant="secondary" className="text-xs">
@@ -532,7 +551,7 @@ export default function ProductsPage() {
                       >
                         <div className="flex items-center gap-3 sm:gap-4">
                           {/* Rank Number */}
-                          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-sm sm:text-lg flex-shrink-0 ${
+                          <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm flex-shrink-0 ${
                             startIndex + index === 0 ? 'bg-yellow-100 text-yellow-700' :
                             startIndex + index === 1 ? 'bg-gray-200 text-gray-700' :
                             startIndex + index === 2 ? 'bg-orange-100 text-orange-700' :
@@ -544,15 +563,15 @@ export default function ProductsPage() {
                           {/* Product Info */}
                           <div className="flex-1 min-w-0">
                             <div className="flex flex-wrap items-center gap-1 sm:gap-2 mb-1">
-                              <h4 className="font-bold text-gray-900 truncate group-hover:text-red-600 transition-colors text-sm sm:text-base">
+                              <h4 className="font-semibold text-gray-900 truncate group-hover:text-red-600 transition-colors text-sm">
                                 {product.name}
                               </h4>
                               {getBurstBadge(product.analytics?.burst_level)}
                             </div>
-                            <div className="flex flex-wrap items-center gap-1 sm:gap-3 text-xs sm:text-sm text-gray-500">
+                            <div className="flex flex-wrap items-center gap-1 sm:gap-3 text-xs text-gray-500">
                               <span>{formatRupiah(product.price)}/{product.unit}</span>
                               <span className="hidden sm:inline">•</span>
-                              <span className="font-medium text-gray-700">
+                              <span className="font-medium text-gray-600">
                                 {product.totalSales7d} terjual
                               </span>
                             </div>

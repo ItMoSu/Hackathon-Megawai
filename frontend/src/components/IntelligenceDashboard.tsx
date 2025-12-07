@@ -299,20 +299,20 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="space-y-2">
           <div className="flex items-center gap-3">
-            <h2 className="text-3xl font-black text-gray-900">
+            <h2 className="text-2xl font-bold text-gray-900">
               Dashboard UMKM: {intelligence.productName || "Produk"}
             </h2>
             <button
               onClick={() => setShowOnboarding(true)}
-              className="rounded-full border border-gray-200 bg-white p-2 text-gray-600 shadow-sm hover:bg-gray-50"
+              className="rounded-full border border-gray-200 bg-white p-1.5 text-gray-600 shadow-sm hover:bg-gray-50"
             >
-              <HelpCircle className="h-6 w-6" />
+              <HelpCircle className="h-5 w-5" />
             </button>
           </div>
-          <p className="text-lg text-gray-700">
+          <p className="text-base text-gray-600">
             Prediksi cerdas + rekomendasi bisnis untuk UMKM. {lastUpdated ? `Update ${lastUpdated.toLocaleTimeString("id-ID")}` : ""}
           </p>
-          <p className="text-base text-gray-700">
+          <p className="text-sm text-gray-500">
             Data {dataQualityDays} hari | Akurasi ~{friendlyConf.pct}% | Kepercayaan {friendlyConf.overall}
           </p>
         </div>
@@ -320,78 +320,78 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
           <Button
             variant="outline"
             onClick={fetchData}
-            className="flex items-center gap-2 rounded-full px-4 py-3 text-lg"
+            className="flex items-center gap-2 rounded-full px-3 py-2 text-sm"
           >
-            <RefreshCcw className="h-5 w-5" />
+            <RefreshCcw className="h-4 w-4" />
             Refresh
           </Button>
           <Button
             variant="outline"
             onClick={handleExportCSV}
-            className="flex items-center gap-2 rounded-full px-4 py-3 text-lg"
+            className="flex items-center gap-2 rounded-full px-3 py-2 text-sm"
           >
-            <Download className="h-5 w-5" />
+            <Download className="h-4 w-4" />
             Export CSV
           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl shadow-md p-6 border-l-4 border-red-500">
-          <div className="flex items-center gap-4">
-            <div className="text-5xl">{status === "MENURUN" ? "📉" : status === "NAIK" ? "📈" : "➡️"}</div>
+        <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl shadow-md p-5 border-l-4 border-red-500">
+          <div className="flex items-center gap-3">
+            <div className="text-3xl">{status === "MENURUN" ? "📉" : status === "NAIK" ? "📈" : "➡️"}</div>
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-700 mb-1">Penjualan Anda</h3>
+              <h3 className="text-sm font-semibold text-gray-600 mb-1">Penjualan Anda</h3>
               <div
-                className="text-3xl font-black"
+                className="text-xl font-bold"
                 style={{
                   color: status === "MENURUN" ? "#DC2626" : status === "NAIK" ? "#16A34A" : "#374151",
                 }}
               >
                 {status === "MENURUN" ? "TURUN" : status === "NAIK" ? "NAIK" : "STABIL"}
               </div>
-              <p className="text-sm text-gray-700 mt-1">{momentumText}</p>
+              <p className="text-xs text-gray-600 mt-1">{momentumText}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-md p-6 border-l-4 border-blue-500">
-          <div className="flex items-center gap-4">
-            <div className="text-5xl">{isCriticalBurst ? "🚨" : "✅"}</div>
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-md p-5 border-l-4 border-blue-500">
+          <div className="flex items-center gap-3">
+            <div className="text-3xl">{isCriticalBurst ? "🚨" : "✅"}</div>
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-700 mb-1">
+              <h3 className="text-sm font-semibold text-gray-600 mb-1">
                 {isCriticalBurst ? "Viral Alert" : "Penjualan Normal"}
               </h3>
-              <div className="text-3xl font-black text-blue-700">
+              <div className="text-xl font-bold text-blue-700">
                 {isCriticalBurst ? `Lonjakan ${burstScore.toFixed(1)}x` : "Stabil"}
               </div>
-              <p className="text-sm text-gray-700 mt-1">
+              <p className="text-xs text-gray-600 mt-1">
                 {isCriticalBurst ? "Penjualan hari ini jauh lebih tinggi dari biasanya." : "Tidak ada lonjakan mendadak."}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl shadow-md p-6 border-l-4 border-green-500">
-          <div className="flex items-center gap-4">
-            <div className="text-5xl">🎯</div>
+        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl shadow-md p-5 border-l-4 border-green-500">
+          <div className="flex items-center gap-3">
+            <div className="text-3xl">🎯</div>
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-700 mb-1">Tingkat Kepercayaan</h3>
-              <div className="flex items-center gap-2 mb-1">
+              <h3 className="text-sm font-semibold text-gray-600 mb-1">Tingkat Kepercayaan</h3>
+              <div className="flex items-center gap-1.5 mb-1">
                 {[1, 2, 3, 4, 5].map((i) => (
                   <div
                     key={i}
-                    className="w-3.5 h-3.5 rounded-full"
+                    className="w-2.5 h-2.5 rounded-full"
                     style={{
                       background: i <= Math.ceil(confidenceScore * 5) ? "#10B981" : "#D1D5DB",
                     }}
                   />
                 ))}
               </div>
-              <p className="text-2xl font-bold text-green-700">
+              <p className="text-lg font-bold text-green-700">
                 {confidenceScore > 0.8 ? "Sangat Akurat" : confidenceScore > 0.6 ? "Cukup Akurat" : "Perlu Data Lagi"}
               </p>
-              <p className="text-sm text-gray-700">Berdasarkan {dataQualityDays} hari data</p>
+              <p className="text-xs text-gray-600">Berdasarkan {dataQualityDays} hari data</p>
             </div>
           </div>
         </div>
@@ -399,14 +399,14 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
 
       <div className="bg-white rounded-xl shadow-md p-6">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <h3 className="text-xl font-bold text-gray-900">📊 Prediksi {forecastDays} Hari ke Depan</h3>
+          <div className="flex items-center gap-3">
+            <h3 className="text-base font-bold text-gray-900">📊 Prediksi {forecastDays} Hari ke Depan</h3>
             <div className="flex gap-1">
               {([7, 14, 30] as ForecastDays[]).map((d) => (
                 <button
                   key={d}
                   onClick={() => setForecastDays(d)}
-                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
                     forecastDays === d
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -418,8 +418,8 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
             </div>
           </div>
           <div className="text-right">
-            <p className="text-sm text-gray-600">Total Prediksi</p>
-            <p className="text-2xl font-bold text-blue-600">{numberFormatter.format(totalPrediction)} porsi</p>
+            <p className="text-xs text-gray-500">Total Prediksi</p>
+            <p className="text-lg font-bold text-blue-600">{numberFormatter.format(totalPrediction)} porsi</p>
           </div>
         </div>
         <div className="h-[400px] w-full">
@@ -481,36 +481,36 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
             </div>
           )}
         </div>
-        <div className="mt-6 flex justify-center gap-6 text-lg">
+        <div className="mt-4 flex justify-center gap-4 text-sm">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-1 bg-blue-500" />
-            <span className="font-semibold">Prediksi</span>
+            <div className="w-5 h-0.5 bg-blue-500" />
+            <span className="font-medium text-gray-600">Prediksi</span>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2">
-        <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl shadow-md p-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">📦 Ringkasan Prediksi</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white rounded-lg p-4 text-center">
-              <p className="text-sm text-gray-600 mb-1">Total 7 Hari</p>
-              <p className="text-3xl font-bold text-blue-600">{numberFormatter.format(totalPrediction)}</p>
-              <p className="text-xs text-gray-500 mt-1">porsi</p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-2">
+        <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl shadow-md p-5">
+          <h3 className="text-base font-bold text-gray-900 mb-3">📦 Ringkasan Prediksi</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-white rounded-lg p-3 text-center">
+              <p className="text-sm text-gray-500 mb-1">Total 7 Hari</p>
+              <p className="text-2xl font-bold text-blue-600">{numberFormatter.format(totalPrediction)}</p>
+              <p className="text-sm text-gray-400 mt-0.5">porsi</p>
             </div>
-            <div className="bg-white rounded-lg p-4 text-center">
-              <p className="text-sm text-gray-600 mb-1">Rata-rata/Hari</p>
-              <p className="text-3xl font-bold text-green-600">{numberFormatter.format(avgPerDay)}</p>
-              <p className="text-xs text-gray-500 mt-1">porsi</p>
+            <div className="bg-white rounded-lg p-3 text-center">
+              <p className="text-sm text-gray-500 mb-1">Rata-rata/Hari</p>
+              <p className="text-2xl font-bold text-green-600">{numberFormatter.format(avgPerDay)}</p>
+              <p className="text-sm text-gray-400 mt-0.5">porsi</p>
             </div>
-            <div className="bg-white rounded-lg p-4 text-center">
-              <p className="text-sm text-gray-600 mb-1">Trend</p>
-              <p className="text-2xl font-bold" style={{ color: trend === "DECREASING" ? "#DC2626" : "#16A34A" }}>
+            <div className="bg-white rounded-lg p-3 text-center">
+              <p className="text-sm text-gray-500 mb-1">Trend</p>
+              <p className="text-xl font-bold" style={{ color: trend === "DECREASING" ? "#DC2626" : "#16A34A" }}>
                 {trend === "DECREASING" ? "📉 Turun" : trend === "INCREASING" ? "📈 Naik" : "➡️ Stabil"}
               </p>
             </div>
           </div>
-          <div className="mt-4 flex items-center gap-2">
+          <div className="mt-3 flex items-center gap-2">
             <span
               className="px-3 py-1 rounded-full text-sm font-semibold"
               style={{
@@ -523,17 +523,17 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl shadow-md p-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">🎯 Saran untuk Anda</h3>
+        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl shadow-md p-5">
+          <h3 className="text-base font-bold text-gray-900 mb-3">🎯 Saran untuk Anda</h3>
           {primaryRecommendation ? (
-            <div className="bg-white rounded-lg p-5">
-              <div className="flex items-start gap-3 mb-3">
-                <span className="text-3xl">{getEmoji(primaryRecommendation.type)}</span>
+            <div className="bg-white rounded-lg p-4">
+              <div className="flex items-start gap-2 mb-2">
+                <span className="text-2xl">{getEmoji(primaryRecommendation.type)}</span>
                 <div className="flex-1">
-                  <h4 className="text-lg font-bold text-purple-700 mb-2">{primaryRecommendation.message}</h4>
+                  <h4 className="text-base font-bold text-purple-700 mb-2">{primaryRecommendation.message}</h4>
                   <ul className="space-y-2">
                     {(primaryRecommendation.suggestions || primaryRecommendation.details)?.map((item: string, i: number) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                      <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
                         <span className="text-green-600 font-bold">✓</span>
                         <span>{item}</span>
                       </li>
@@ -543,7 +543,7 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-lg p-5">
+            <div className="bg-white rounded-lg p-4">
               <p className="text-base font-semibold text-gray-700 mb-3">
                 {trend === "DECREASING"
                   ? "⚠️ Penjualan menurun, tingkatkan aktivitas promosi"
