@@ -176,6 +176,148 @@ export class AnalyticsController {
   }
 
   /**
+   * GET /api/analytics/summary
+   * Get dashboard summary with today's stats, changes, burst alerts, and top products
+   */
+  static async getDashboardSummary(req: Request, res: Response) {
+    try {
+      const userId = req.user?.sub;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'User tidak terotentikasi'
+        });
+      }
+
+      // Calculate dates
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      const endOfToday = new Date(today);
+      endOfToday.setHours(23, 59, 59, 999);
+
+      // Today's totals
+      const todaySales = await prisma.sales.aggregate({
+        _sum: {
+          quantity: true,
+          revenue: true
+        },
+        _count: true,
+        where: {
+          user_id: userId,
+          sale_date: {
+            gte: today,
+            lte: endOfToday
+          }
+        }
+      });
+
+      // Yesterday's totals for comparison
+      const yesterdaySales = await prisma.sales.aggregate({
+        _sum: {
+          quantity: true,
+          revenue: true
+        },
+        where: {
+          user_id: userId,
+          sale_date: {
+            gte: yesterday,
+            lt: today
+          }
+        }
+      });
+
+      const todayQty = Number(todaySales._sum.quantity) || 0;
+      const todayRev = Number(todaySales._sum.revenue) || 0;
+      const yesterdayQty = Number(yesterdaySales._sum.quantity) || 1; // avoid division by 0
+      const yesterdayRev = Number(yesterdaySales._sum.revenue) || 1;
+
+      const quantityChange = yesterdayQty > 0 
+        ? ((todayQty - yesterdayQty) / yesterdayQty) * 100 
+        : 0;
+      const revenueChange = yesterdayRev > 0 
+        ? ((todayRev - yesterdayRev) / yesterdayRev) * 100 
+        : 0;
+
+      // Get burst alerts from daily_analytics
+      const twoDaysAgo = new Date(today);
+      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+
+      const burstAlerts = await prisma.daily_analytics.findMany({
+        where: {
+          user_id: userId,
+          metric_date: { gte: twoDaysAgo },
+          burst_level: { in: ['HIGH', 'CRITICAL'] }
+        },
+        include: {
+          products: {
+            select: { id: true, name: true }
+          }
+        },
+        orderBy: { burst_score: 'desc' },
+        take: 5
+      });
+
+      // Get top products by quantity today
+      const topProductsRaw = await prisma.sales.groupBy({
+        by: ['product_id'],
+        _sum: { quantity: true },
+        where: {
+          user_id: userId,
+          sale_date: { gte: today, lte: endOfToday }
+        },
+        orderBy: { _sum: { quantity: 'desc' } },
+        take: 5
+      });
+
+      const topProducts = await Promise.all(topProductsRaw.map(async (item) => {
+        const product = await prisma.products.findUnique({
+          where: { id: item.product_id },
+          select: { id: true, name: true }
+        });
+        return {
+          product_id: item.product_id,
+          product_name: product?.name || 'Unknown',
+          quantity: Number(item._sum.quantity) || 0
+        };
+      }));
+
+      res.json({
+        success: true,
+        summary: {
+          today: {
+            total_quantity: todayQty,
+            total_revenue: todayRev,
+            sales_count: todaySales._count || 0
+          },
+          changes: {
+            quantity_change: Number(quantityChange.toFixed(1)),
+            revenue_change: Number(revenueChange.toFixed(1))
+          },
+          burst_alerts: burstAlerts.map(alert => ({
+            product_id: alert.product_id,
+            product_name: alert.products.name,
+            burst_score: Number(alert.burst_score) || 0,
+            burst_level: alert.burst_level || 'NORMAL'
+          })),
+          top_products: topProducts
+        }
+      });
+
+    } catch (error: any) {
+      console.error('[AnalyticsController] Summary error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Gagal mendapatkan summary'
+      });
+    }
+  }
+
+  /**
    * GET /api/analytics/products/:productId/forecast
    * Get ML forecast for a specific product
    */
@@ -271,7 +413,7 @@ export class AnalyticsController {
   }
   
   /**
-   * GET /api/analytics/products/ranking
+   * GET /api/analytics/ranking
    * Get product ranking based on ML priority scores
    */
   static async getProductRanking(req: Request, res: Response) {
@@ -286,14 +428,71 @@ export class AnalyticsController {
         });
       }
 
-      // Get weekly report (contains rankings)
-      const report = await intelligenceService.getWeeklyReport(userId, limit);
-      
+      // Get all active products
+      const products = await prisma.products.findMany({
+        where: { 
+          user_id: userId,
+          is_active: true 
+        },
+        select: { id: true, name: true, unit: true }
+      });
+
+      // Analyze each product
+      const rankings = [];
+
+      for (const product of products) {
+        try {
+          const salesHistory = await getSalesData(userId, product.id, 60);
+          
+          if (salesHistory.length >= 3) {
+            const analysis = await intelligenceService.analyzeProduct(
+              product.id,
+              product.name,
+              salesHistory
+            );
+
+            // Calculate average quantity
+            const totalQty = salesHistory.reduce((sum, s) => sum + Number(s.quantity), 0);
+            const avgQty = salesHistory.length > 0 ? totalQty / salesHistory.length : 0;
+
+            // Calculate priority score from momentum and burst
+            const momentum = analysis.realtime?.momentum?.combined || 1;
+            const burstScore = analysis.realtime?.burst?.score || 0;
+            const momentumFactor = Math.abs(momentum - 1);
+            const burstFactor = Math.min(burstScore / 3, 1);
+            const priorityScore = 0.7 * momentumFactor + 0.3 * burstFactor;
+
+            rankings.push({
+              productId: product.id,
+              productName: product.name,
+              unit: product.unit,
+              priorityScore: priorityScore,
+              momentum: {
+                combined: momentum,
+                status: analysis.realtime?.momentum?.status || 'STABLE'
+              },
+              burst: {
+                score: burstScore,
+                level: analysis.realtime?.burst?.severity || 'NORMAL'
+              },
+              avgQuantity: Number(avgQty.toFixed(1)),
+              forecast: analysis.forecast?.predictions?.slice(0, 3) || [],
+              confidence: analysis.confidence?.overall || 'LOW'
+            });
+          }
+        } catch (err) {
+          console.error(`Error analyzing product ${product.id}:`, err);
+        }
+      }
+
+      // Sort by priority score (descending)
+      rankings.sort((a, b) => b.priorityScore - a.priorityScore);
+
       res.json({
         success: true,
-        rankings: report.topPerformers || [],
-        summary: report.summary,
-        generatedAt: report.generatedAt
+        rankings: rankings.slice(0, limit),
+        total: rankings.length,
+        generatedAt: new Date().toISOString()
       });
       
     } catch (error: any) {

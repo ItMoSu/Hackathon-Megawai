@@ -428,7 +428,7 @@ export const getProductTrend = async (req: Request, res: Response) => {
       cursor.setDate(cursor.getDate() + 1);
     }
 
-    sales.forEach((sale) => {
+    sales.forEach((sale: { sale_date: Date; quantity: any; product_id: string; products: { name: string } | null }) => {
       const key = formatDate(new Date(sale.sale_date));
       const prev = dateMap.get(key) ?? 0;
       dateMap.set(key, prev + Number(sale.quantity || 0));
@@ -440,7 +440,7 @@ export const getProductTrend = async (req: Request, res: Response) => {
     }));
 
     const resolvedName = productId
-      ? productName ?? sales.find((s: typeof sales[0]) => s.products?.name)?.products?.name ?? 'Produk'
+      ? productName ?? sales.find((s: { products: { name: string } | null }) => s.products?.name)?.products?.name ?? 'Produk'
       : 'Semua Produk';
 
     return res.json({
