@@ -103,12 +103,13 @@ export const createProduct = async (req: Request, res: Response) => {
     }
 
     // Validate price
-    let parsedPrice = null;
+    let parsedPrice: number | null = null;
     if (price !== undefined && price !== null && price !== '') {
-      parsedPrice = parseFloat(price);
-      if (isNaN(parsedPrice) || parsedPrice < 0 || parsedPrice > 999999999) {
+      const parsed = parseFloat(price);
+      if (isNaN(parsed) || parsed < 0 || parsed > 999999999) {
         return res.status(400).json({ error: "Harga tidak valid" });
       }
+      parsedPrice = parsed;
     }
 
     const sanitizedName = sanitizeString(name);

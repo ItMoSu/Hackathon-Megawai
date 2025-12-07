@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../lib/database/schema'; 
 import { bulkUpsertSales, upsertAnalyticsResult } from '../../lib/database/queries';
-import { intelligenceService } from '../services/intelligenceService';
+import { intelligenceService, ProductIntelligence } from '../services/intelligenceService';
 import { generateBurstAnalytics } from '../services/burstService';
 import { parseFile, parseFlexibleDate } from '../utils/fileParser';
 
@@ -82,7 +82,7 @@ export const createSalesEntry = async (req: Request, res: Response) => {
     }
 
     // 4. ✅ NEW: AI Analysis with ML Service
-    let aiAnalysis = null;
+    let aiAnalysis: ProductIntelligence | null = null;
 
     if (product_id) {
       try {
@@ -641,7 +641,7 @@ export const uploadSalesFile = async (req: Request, res: Response) => {
         await bulkUpsertSales(userIdStr, uploadDatasetId, rows);
         
         // Generate basic analytics for uploaded products
-        const uniqueProducts = [...new Set(rows.map(r => r.productName))];
+        const uniqueProducts = [...new Set(rows.map(r => r.productName))] as string[];
         console.log(`[Upload] Generating analytics for ${uniqueProducts.length} products`);
         
         // Get product IDs
@@ -732,7 +732,7 @@ export const uploadSalesFile = async (req: Request, res: Response) => {
         await bulkUpsertSales(userIdStr, uploadDatasetId, rows);
         
         // Generate analytics for first 20 products
-        const uniqueProducts = [...new Set(rows.map(r => r.productName))].slice(0, 20);
+        const uniqueProducts = ([...new Set(rows.map(r => r.productName))] as string[]).slice(0, 20);
         const products = await prisma.products.findMany({
           where: { user_id: userIdStr, name: { in: uniqueProducts } },
           select: { id: true, name: true }
