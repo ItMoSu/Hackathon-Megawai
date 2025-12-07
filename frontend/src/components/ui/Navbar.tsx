@@ -27,24 +27,27 @@ export default function Navbar() {
 
   const shouldAnimate = !hasAnimated && pathname === "/";
 
-  useEffect(() => {
+useEffect(() => {
+  const timer = setTimeout(() => {
     setIsMounted(true);
-    hasAnimated = true;
     
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
+    const token = localStorage.getItem("token");
+    setIsLoggedIn(!!token);
+  }, 0);
 
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  hasAnimated = true; 
 
-  useEffect(() => {
-    if (isMounted) {
-      const token = localStorage.getItem("token");
-      setIsLoggedIn(!!token);
-    }
-  }, [isMounted]);
+  const handleScroll = () => {
+    setScrolled(window.scrollY > 20);
+  };
+  
+  window.addEventListener("scroll", handleScroll, { passive: true });
+
+  return () => {
+    clearTimeout(timer); 
+    window.removeEventListener("scroll", handleScroll);
+  };
+}, []);
 
   return (
     <>
@@ -66,9 +69,9 @@ export default function Navbar() {
               <div className="w-10 h-10 bg-[#DC2626] rounded-xl flex items-center justify-center text-white transform group-hover:rotate-12 transition-transform duration-300">
                 <ShoppingBag size={20} />
               </div>
-              <span className="text-2xl font-bold text-black tracking-tighter">
-                MEGA<span className="text-[#DC2626]">WAI</span>
-              </span>
+                <span className="text-2xl font-bold text-black tracking-tighter">
+                  MEGAW<span className="text-[#DC2626] ml-2">AI</span>
+                </span>
             </Link>
 
             {/* DESKTOP MENU */}

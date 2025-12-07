@@ -1,4 +1,4 @@
-# 🎯 MEGAWAI AI
+# 🎯 MEGAW AI
 
 Hackathon project with full-stack implementation using modern web technologies and machine learning prediction using XGBoost.
 
@@ -939,4 +939,4 @@ Found a bug? [Open an issue](https://github.com/Okiled/-IMPHNEN-HEKATON/issues)
 
 ⭐ **Star this repo** if you find it helpful!
 
-Made with ❤️ by the MEGAWAI Team
+Made with ❤️ by the MEGAW AI Team
