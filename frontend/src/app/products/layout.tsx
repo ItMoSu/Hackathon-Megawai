@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Manajemen Produk",
-  description: "Kelola katalog produk, lihat ranking performa, dan analisis penjualan dengan AI MEGAWAI.",
+  description: "Kelola katalog produk, lihat ranking performa, dan analisis penjualan dengan Megaw AI.",
   openGraph: {
-    title: "Manajemen Produk - MEGAWAI",
+    title: "Manajemen Produk - Megaw AI",
     description: "Kelola katalog dan analisis performa produk",
     type: "website",
   },

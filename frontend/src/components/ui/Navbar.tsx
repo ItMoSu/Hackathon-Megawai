@@ -7,11 +7,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, ShoppingBag, User, LogOut } from "lucide-react";
 
 const navLinks = [
-  { name: "Home", href: "/" },
-  { name: "Products", href: "/products" },
+  { name: "Beranda", href: "/" },
+  { name: "Produk", href: "/products" },
   { name: "Dashboard", href: "/dashboard" },
   { name: "Input Data", href: "/input" },
-  { name: "Reports", href: "/reports" },
+  { name: "Laporan", href: "/reports" },
 ];
 
 let hasAnimated = false;
@@ -98,8 +98,8 @@ export default function Navbar() {
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2 pr-4 border-r border-gray-300">
                         <div className="text-right hidden lg:block">
-                            <p className="text-sm font-bold text-gray-800 leading-none">Admin</p>
-                            <p className="text-[10px] text-gray-500">Super User</p>
+                            <p className="text-sm font-bold text-gray-800 leading-none">Pengguna</p>
+                            <p className="text-[10px] text-gray-500">UMKM</p>
                         </div>
                         <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center border border-gray-200 cursor-pointer hover:bg-gray-200 transition">
                             <User size={18} className="text-gray-600"/>
@@ -110,9 +110,9 @@ export default function Navbar() {
                           localStorage.removeItem("token");
                           localStorage.removeItem("user_id");
                           setIsLoggedIn(false);
-                          router.push("/login");
+                          router.push("/");
                         }}
-                        className="text-gray-500 hover:text-[#DC2626] transition-colors" title="Logout">
+                        className="text-gray-500 hover:text-[#DC2626] transition-colors" title="Keluar">
                         <LogOut size={20} />
                     </button>
                 </div>
@@ -122,15 +122,15 @@ export default function Navbar() {
                     href="/login"
                     className="text-sm font-semibold text-black hover:text-[#DC2626] transition-colors"
                   >
-                    Log In
+                    Masuk
                   </Link>
-                  <Link href="/register">
+                  <Link href="/login?mode=register">
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       className="px-5 py-2 bg-[#DC2626] text-white text-sm font-bold rounded-full shadow-lg hover:bg-red-700 transition-colors"
                     >
-                      Sign Up
+                      Daftar
                     </motion.button>
                   </Link>
                 </>
@@ -186,7 +186,7 @@ export default function Navbar() {
                           <User size={16} className="text-gray-600"/>
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-sm font-bold text-gray-800">Admin User</span>
+                          <span className="text-sm font-bold text-gray-800">Pengguna UMKM</span>
                         </div>
                       </div>
                       <button
@@ -195,23 +195,23 @@ export default function Navbar() {
                           localStorage.removeItem("user_id");
                           setIsLoggedIn(false);
                           setIsOpen(false);
-                          router.push("/login");
+                          router.push("/");
                         }}
                         className="w-full flex items-center gap-2 px-3 py-3 text-red-600 font-medium hover:bg-red-50 rounded-lg"
                       >
-                        <LogOut size={18} /> Logout
+                        <LogOut size={18} /> Keluar
                       </button>
                     </>
                   ) : (
                     <>
                       <Link href="/login" onClick={() => setIsOpen(false)}>
                         <button className="w-full text-left px-3 py-3 text-gray-700 font-medium hover:text-[#DC2626]">
-                          Log In
+                          Masuk
                         </button>
                       </Link>
-                      <Link href="/register" onClick={() => setIsOpen(false)}>
+                      <Link href="/login?mode=register" onClick={() => setIsOpen(false)}>
                         <button className="w-full px-3 py-3 bg-[#DC2626] text-white rounded-lg font-bold shadow-md">
-                          Sign Up Now
+                          Daftar Sekarang
                         </button>
                       </Link>
                     </>

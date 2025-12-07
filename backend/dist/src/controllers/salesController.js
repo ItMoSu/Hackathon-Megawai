@@ -5,6 +5,7 @@ const schema_1 = require("../../lib/database/schema");
 const queries_1 = require("../../lib/database/queries");
 const intelligenceService_1 = require("../services/intelligenceService");
 const burstService_1 = require("../services/burstService");
+const fileParser_1 = require("../utils/fileParser");
 /**
  * POST /api/sales
  * Create new sales entry with AI analysis
@@ -487,26 +488,16 @@ const uploadSalesFile = async (req, res) => {
             return res.status(400).json({ success: false, error: "File tidak ditemukan" });
         }
         const fileName = file.originalname.toLowerCase();
-        let parsedData = [];
-        // Parse based on file type
-        if (fileName.endsWith('.csv')) {
-            parsedData = parseCSV(file.buffer.toString('utf-8'));
+        // Parse file with dynamic column detection (supports CSV, Excel, DOCX)
+        let parsedData;
+        try {
+            parsedData = (0, fileParser_1.parseFile)(file.buffer, fileName);
         }
-        else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-            // For Excel files, we'd need xlsx library - for now return error
+        catch (parseError) {
             return res.status(400).json({
                 success: false,
-                error: "Upload Excel akan segera tersedia. Gunakan CSV untuk saat ini."
+                error: parseError instanceof Error ? parseError.message : "Format file tidak didukung"
             });
-        }
-        else if (fileName.endsWith('.docx')) {
-            return res.status(400).json({
-                success: false,
-                error: "Upload Word akan segera tersedia. Gunakan CSV untuk saat ini."
-            });
-        }
-        else {
-            return res.status(400).json({ success: false, error: "Format file tidak didukung" });
         }
         if (parsedData.length === 0) {
             return res.status(400).json({ success: false, error: "Tidak ada data valid dalam file" });
@@ -558,89 +549,3 @@ const uploadSalesFile = async (req, res) => {
     }
 };
 exports.uploadSalesFile = uploadSalesFile;
-// Helper function to parse CSV - supports multiple formats
-function parseCSV(content) {
-    const lines = content.split('\n').filter(line => line.trim());
-    const result = [];
-    if (lines.length === 0)
-        return result;
-    // Detect header and column positions
-    const header = lines[0].toLowerCase();
-    let startIndex = 0;
-    let colMap = { product: 0, quantity: 1, date: -1 };
-    // Check if first line is header
-    const isHeader = header.includes('tanggal') || header.includes('produk') ||
-        header.includes('product') || header.includes('nama') ||
-        header.includes('qty') || header.includes('menu');
-    if (isHeader) {
-        startIndex = 1;
-        const headerCols = lines[0].split(',').map(c => c.trim().toLowerCase().replace(/"/g, ''));
-        // Find column indices dynamically
-        headerCols.forEach((col, idx) => {
-            if (col.includes('nama') || col.includes('produk') || col.includes('product') || col.includes('menu')) {
-                colMap.product = idx;
-            }
-            if (col.includes('qty') || col.includes('quantity') || col.includes('jumlah') || col.includes('terjual')) {
-                colMap.quantity = idx;
-            }
-            if (col.includes('tanggal') || col.includes('date') || col.includes('tgl')) {
-                colMap.date = idx;
-            }
-        });
-    }
-    for (let i = startIndex; i < lines.length; i++) {
-        const cols = lines[i].split(',').map(c => c.trim().replace(/"/g, ''));
-        if (cols.length >= 2) {
-            const productName = cols[colMap.product] || '';
-            const quantity = parseInt(cols[colMap.quantity], 10);
-            let date = undefined;
-            // Get date if available
-            if (colMap.date >= 0 && cols[colMap.date]) {
-                const rawDate = cols[colMap.date];
-                // Parse various date formats
-                const parsed = parseFlexibleDate(rawDate);
-                if (parsed)
-                    date = parsed;
-            }
-            if (productName && !isNaN(quantity) && quantity >= 0) {
-                result.push({ productName, quantity, date });
-            }
-        }
-    }
-    return result;
-}
-// Parse various date formats to YYYY-MM-DD
-function parseFlexibleDate(dateStr) {
-    if (!dateStr)
-        return undefined;
-    // Try different date formats
-    const formats = [
-        // YYYY-MM-DD
-        /^(\d{4})-(\d{1,2})-(\d{1,2})$/,
-        // DD-MM-YYYY or DD/MM/YYYY
-        /^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/,
-        // MM-DD-YYYY or MM/DD/YYYY
-        /^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/,
-    ];
-    // YYYY-MM-DD format
-    let match = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-    if (match) {
-        const [_, y, m, d] = match;
-        return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-    }
-    // DD-MM-YYYY or DD/MM/YYYY format
-    match = dateStr.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
-    if (match) {
-        const [_, d, m, y] = match;
-        return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-    }
-    // Try native Date parsing as fallback
-    try {
-        const d = new Date(dateStr);
-        if (!isNaN(d.getTime())) {
-            return d.toISOString().split('T')[0];
-        }
-    }
-    catch { }
-    return undefined;
-}

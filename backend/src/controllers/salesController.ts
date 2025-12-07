@@ -3,6 +3,7 @@ import { prisma } from '../../lib/database/schema';
 import { bulkUpsertSales, upsertAnalyticsResult } from '../../lib/database/queries';
 import { intelligenceService } from '../services/intelligenceService';
 import { generateBurstAnalytics } from '../services/burstService';
+import { parseFile, parseFlexibleDate } from '../utils/fileParser';
 
 /**
  * POST /api/sales
@@ -556,24 +557,16 @@ export const uploadSalesFile = async (req: Request, res: Response) => {
     }
 
     const fileName = file.originalname.toLowerCase();
-    let parsedData: Array<{ productName: string; quantity: number; date?: string }> = [];
 
-    // Parse based on file type
-    if (fileName.endsWith('.csv')) {
-      parsedData = parseCSV(file.buffer.toString('utf-8'));
-    } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-      // For Excel files, we'd need xlsx library - for now return error
+    // Parse file with dynamic column detection (supports CSV, Excel, DOCX)
+    let parsedData;
+    try {
+      parsedData = parseFile(file.buffer, fileName);
+    } catch (parseError) {
       return res.status(400).json({ 
         success: false, 
-        error: "Upload Excel akan segera tersedia. Gunakan CSV untuk saat ini." 
+        error: parseError instanceof Error ? parseError.message : "Format file tidak didukung" 
       });
-    } else if (fileName.endsWith('.docx')) {
-      return res.status(400).json({ 
-        success: false, 
-        error: "Upload Word akan segera tersedia. Gunakan CSV untuk saat ini." 
-      });
-    } else {
-      return res.status(400).json({ success: false, error: "Format file tidak didukung" });
     }
 
     if (parsedData.length === 0) {
@@ -598,16 +591,99 @@ export const uploadSalesFile = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: "Tidak ada data valid dengan tanggal yang benar" });
     }
 
-    // Return immediately, process in background
     const { randomUUID } = require('crypto');
     const uploadDatasetId = randomUUID();
     const userIdStr = String(userId);
     const rowCount = rows.length;
 
-    // Send response FIRST
+    // For smaller files (< 5000 rows), process synchronously for better UX
+    if (rowCount < 5000) {
+      try {
+        console.log(`[Upload] Sync processing ${rowCount} rows for user ${userIdStr}`);
+        await bulkUpsertSales(userIdStr, uploadDatasetId, rows);
+        
+        // Generate basic analytics for uploaded products
+        const uniqueProducts = [...new Set(rows.map(r => r.productName))];
+        console.log(`[Upload] Generating analytics for ${uniqueProducts.length} products`);
+        
+        // Get product IDs
+        const products = await prisma.products.findMany({
+          where: { 
+            user_id: userIdStr,
+            name: { in: uniqueProducts }
+          },
+          select: { id: true, name: true }
+        });
+
+        // Generate basic analytics in parallel (limit concurrency)
+        const analyticsPromises = products.slice(0, 20).map(async (product) => {
+          try {
+            // Get sales history
+            const sales = await prisma.sales.findMany({
+              where: { product_id: product.id, user_id: userIdStr },
+              orderBy: { sale_date: 'desc' },
+              take: 60
+            });
+
+            if (sales.length >= 3) {
+              const salesData = sales.map(s => ({
+                date: s.sale_date,
+                quantity: Number(s.quantity),
+                productName: product.name
+              }));
+
+              // Quick analysis
+              const analysis = await intelligenceService.analyzeProduct(
+                product.id,
+                product.name,
+                salesData
+              );
+
+              if (analysis && sales[0]) {
+                await upsertAnalyticsResult(
+                  userIdStr,
+                  uploadDatasetId,
+                  product.id,
+                  sales[0].sale_date,
+                  {
+                    actualQty: Number(sales[0].quantity),
+                    burstScore: analysis.realtime.burst.score,
+                    burstLevel: analysis.realtime.burst.severity,
+                    momentumCombined: analysis.realtime.momentum.combined,
+                    momentumLabel: analysis.realtime.momentum.status,
+                    aiInsight: { source: 'upload', method: analysis.forecast.method }
+                  }
+                );
+              }
+            }
+          } catch (err) {
+            console.error(`[Upload] Analytics error for ${product.name}:`, err);
+          }
+        });
+
+        await Promise.all(analyticsPromises);
+        console.log(`[Upload] Sync done: ${rowCount} rows, ${products.length} products`);
+
+        return res.json({ 
+          success: true, 
+          message: `Berhasil! ${rowCount} data diproses, ${products.length} produk diupdate.`,
+          processed: rowCount,
+          products: products.length
+        });
+
+      } catch (err) {
+        console.error(`[Upload] Sync error:`, err);
+        return res.status(500).json({ 
+          success: false, 
+          error: err instanceof Error ? err.message : "Gagal memproses file" 
+        });
+      }
+    }
+
+    // For larger files, process in background
     res.json({ 
       success: true, 
-      message: `Memproses ${rowCount} data di background...`,
+      message: `Memproses ${rowCount} data di background (file besar). Refresh halaman dalam beberapa saat.`,
       processed: rowCount
     });
 
@@ -616,6 +692,46 @@ export const uploadSalesFile = async (req: Request, res: Response) => {
       try {
         console.log(`[Upload] Background processing ${rowCount} rows for user ${userIdStr}`);
         await bulkUpsertSales(userIdStr, uploadDatasetId, rows);
+        
+        // Generate analytics for first 20 products
+        const uniqueProducts = [...new Set(rows.map(r => r.productName))].slice(0, 20);
+        const products = await prisma.products.findMany({
+          where: { user_id: userIdStr, name: { in: uniqueProducts } },
+          select: { id: true, name: true }
+        });
+
+        for (const product of products) {
+          try {
+            const sales = await prisma.sales.findMany({
+              where: { product_id: product.id, user_id: userIdStr },
+              orderBy: { sale_date: 'desc' },
+              take: 60
+            });
+
+            if (sales.length >= 3) {
+              const salesData = sales.map(s => ({
+                date: s.sale_date,
+                quantity: Number(s.quantity),
+                productName: product.name
+              }));
+
+              const analysis = await intelligenceService.analyzeProduct(product.id, product.name, salesData);
+              if (analysis && sales[0]) {
+                await upsertAnalyticsResult(userIdStr, uploadDatasetId, product.id, sales[0].sale_date, {
+                  actualQty: Number(sales[0].quantity),
+                  burstScore: analysis.realtime.burst.score,
+                  burstLevel: analysis.realtime.burst.severity,
+                  momentumCombined: analysis.realtime.momentum.combined,
+                  momentumLabel: analysis.realtime.momentum.status,
+                  aiInsight: { source: 'upload-bg', method: analysis.forecast.method }
+                });
+              }
+            }
+          } catch (err) {
+            console.error(`[Upload BG] Analytics error:`, err);
+          }
+        }
+        
         console.log(`[Upload] Background done: ${rowCount} rows`);
       } catch (err) {
         console.error(`[Upload] Background error:`, err);
@@ -630,102 +746,4 @@ export const uploadSalesFile = async (req: Request, res: Response) => {
     });
   }
 };
-
-// Helper function to parse CSV - supports multiple formats
-function parseCSV(content: string): Array<{ productName: string; quantity: number; date?: string }> {
-  const lines = content.split('\n').filter(line => line.trim());
-  const result: Array<{ productName: string; quantity: number; date?: string }> = [];
-
-  if (lines.length === 0) return result;
-
-  // Detect header and column positions
-  const header = lines[0].toLowerCase();
-  let startIndex = 0;
-  let colMap = { product: 0, quantity: 1, date: -1 };
-
-  // Check if first line is header
-  const isHeader = header.includes('tanggal') || header.includes('produk') || 
-                   header.includes('product') || header.includes('nama') ||
-                   header.includes('qty') || header.includes('menu');
-
-  if (isHeader) {
-    startIndex = 1;
-    const headerCols = lines[0].split(',').map(c => c.trim().toLowerCase().replace(/"/g, ''));
-    
-    // Find column indices dynamically
-    headerCols.forEach((col, idx) => {
-      if (col.includes('nama') || col.includes('produk') || col.includes('product') || col.includes('menu')) {
-        colMap.product = idx;
-      }
-      if (col.includes('qty') || col.includes('quantity') || col.includes('jumlah') || col.includes('terjual')) {
-        colMap.quantity = idx;
-      }
-      if (col.includes('tanggal') || col.includes('date') || col.includes('tgl')) {
-        colMap.date = idx;
-      }
-    });
-  }
-
-  for (let i = startIndex; i < lines.length; i++) {
-    const cols = lines[i].split(',').map(c => c.trim().replace(/"/g, ''));
-    
-    if (cols.length >= 2) {
-      const productName = cols[colMap.product] || '';
-      const quantity = parseInt(cols[colMap.quantity], 10);
-      let date: string | undefined = undefined;
-
-      // Get date if available
-      if (colMap.date >= 0 && cols[colMap.date]) {
-        const rawDate = cols[colMap.date];
-        // Parse various date formats
-        const parsed = parseFlexibleDate(rawDate);
-        if (parsed) date = parsed;
-      }
-
-      if (productName && !isNaN(quantity) && quantity >= 0) {
-        result.push({ productName, quantity, date });
-      }
-    }
-  }
-
-  return result;
-}
-
-// Parse various date formats to YYYY-MM-DD
-function parseFlexibleDate(dateStr: string): string | undefined {
-  if (!dateStr) return undefined;
-
-  // Try different date formats
-  const formats = [
-    // YYYY-MM-DD
-    /^(\d{4})-(\d{1,2})-(\d{1,2})$/,
-    // DD-MM-YYYY or DD/MM/YYYY
-    /^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/,
-    // MM-DD-YYYY or MM/DD/YYYY
-    /^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/,
-  ];
-
-  // YYYY-MM-DD format
-  let match = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-  if (match) {
-    const [_, y, m, d] = match;
-    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-  }
-
-  // DD-MM-YYYY or DD/MM/YYYY format
-  match = dateStr.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
-  if (match) {
-    const [_, d, m, y] = match;
-    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-  }
-
-  // Try native Date parsing as fallback
-  try {
-    const d = new Date(dateStr);
-    if (!isNaN(d.getTime())) {
-      return d.toISOString().split('T')[0];
-    }
-  } catch {}
-
-  return undefined;
-}
+

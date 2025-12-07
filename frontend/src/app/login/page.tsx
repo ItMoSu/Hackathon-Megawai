@@ -1,14 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_URL } from "@/lib/api";
+import { setAuth } from "@/lib/auth";
+import { sanitizeEmail } from "@/lib/sanitize";
+import { CheckCircle, Mail } from "lucide-react";
 
 export default function AuthPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
@@ -16,6 +21,18 @@ export default function AuthPage() {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [showVerificationSent, setShowVerificationSent] = useState(false);
+
+  // Check URL params for mode and verification status
+  useEffect(() => {
+    if (searchParams.get("verified") === "true") {
+      setSuccessMessage("Email berhasil diverifikasi! Silakan login.");
+    }
+    if (searchParams.get("mode") === "register") {
+      setMode("register");
+    }
+  }, [searchParams]);
 
   // =====================
   // LOGIN
@@ -26,10 +43,11 @@ export default function AuthPage() {
     setError("");
 
     try {
-      const res = await fetch("http://localhost:5000/api/auth/login", {
+      const sanitizedEmail = sanitizeEmail(email);
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: sanitizedEmail, password }),
       });
 
       const data = await res.json();
@@ -41,8 +59,7 @@ export default function AuthPage() {
       const userId = data?.data?.user?.id;
 
       if (accessToken && userId) {
-        localStorage.setItem("token", accessToken);
-        localStorage.setItem("user_id", userId);
+        setAuth(accessToken, userId);
       }
 
       router.push("/products");
@@ -62,10 +79,11 @@ export default function AuthPage() {
     setError("");
 
     try {
-      const res = await fetch("http://localhost:5000/api/auth/register", {
+      const sanitizedEmail = sanitizeEmail(email);
+      const res = await fetch(`${API_URL}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: sanitizedEmail, password }),
       });
 
       const data = await res.json();
@@ -73,21 +91,70 @@ export default function AuthPage() {
         throw new Error(data?.error || data?.message || "Register gagal");
       }
 
+      // Check if email verification is required
+      if (data?.data?.requires_verification) {
+        setShowVerificationSent(true);
+        return;
+      }
+
+      // No verification needed - login directly
       const accessToken = data?.data?.access_token;
       const userId = data?.data?.user?.id;
 
       if (accessToken && userId) {
-        localStorage.setItem("token", accessToken);
-        localStorage.setItem("user_id", userId);
+        setAuth(accessToken, userId);
+        router.push("/products");
       }
-
-      router.push("/products");
-    } catch (err: any) {
-      setError(err.message || "Register gagal");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Register gagal");
     } finally {
       setLoading(false);
     }
   };
+
+  // Show verification sent screen
+  if (showVerificationSent) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-md"
+        >
+          <Card className="p-6">
+            <CardContent className="text-center py-8">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Mail className="w-8 h-8 text-green-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Cek Email Anda</h2>
+              <p className="text-gray-600 mb-6">
+                Kami telah mengirim link verifikasi ke <strong>{email}</strong>. 
+                Klik link tersebut untuk mengaktifkan akun Anda.
+              </p>
+              <Button
+                onClick={() => {
+                  setShowVerificationSent(false);
+                  setMode("login");
+                }}
+                className="w-full"
+              >
+                Kembali ke Login
+              </Button>
+              <p className="text-sm text-gray-500 mt-4">
+                Tidak menerima email? Cek folder spam atau{" "}
+                <span 
+                  className="text-blue-600 cursor-pointer"
+                  onClick={() => setShowVerificationSent(false)}
+                >
+                  daftar ulang
+                </span>
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 overflow-hidden">
@@ -105,11 +172,19 @@ export default function AuthPage() {
               transition={{ duration: 0.25 }}
               className="text-2xl font-bold text-center"
             >
-              {mode === "login" ? "Login MEGAWAI" : "Daftar Akun Baru"}
+              {mode === "login" ? "Masuk ke Megaw AI" : "Daftar Akun Baru"}
             </motion.h2>
           </CardHeader>
 
           <CardContent>
+            {/* Success message (e.g., after email verification) */}
+            {successMessage && (
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <p className="text-green-700 text-sm">{successMessage}</p>
+              </div>
+            )}
+
             <AnimatePresence mode="wait">
               {mode === "login" ? (
                 <motion.form
@@ -187,7 +262,7 @@ export default function AuthPage() {
                       onClick={() => setMode("login")}
                       className="text-blue-600 cursor-pointer"
                     >
-                      Login
+                      Masuk
                     </span>
                   </p>
                 </motion.form>

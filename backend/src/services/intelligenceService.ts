@@ -44,7 +44,7 @@ export type ProductIntelligence = {
 
 const ML_API_URL = (process.env.ML_API_URL || 'http://localhost:8000').replace(/\/$/, '');
 const MIN_TRAINING_DAYS = 5; // ✅ LOWERED from 30 to 5 for faster testing
-const FORECAST_DAYS = 7;
+const DEFAULT_FORECAST_DAYS = 7;
 
 class IntelligenceService {
   private normalizeSales(salesData: SalesPoint[]): SalesPoint[] {
@@ -172,7 +172,7 @@ class IntelligenceService {
       const response = await axios.post(
         `${ML_API_URL}/api/ml/predict-universal`,
         { sales_data: salesData, forecast_days: days },
-        { timeout: 15000, headers: { 'Content-Type': 'application/json' } }
+        { timeout: 45000, headers: { 'Content-Type': 'application/json' } } // 45s timeout untuk data besar
       );
 
       if (response.data && response.data.success) return response.data;
@@ -197,8 +197,10 @@ class IntelligenceService {
     productId: string,
     productName: string | undefined,
     salesData: SalesPoint[],
+    forecastDays: number = DEFAULT_FORECAST_DAYS,
   ): Promise<ProductIntelligence> {
     const cleaned = this.normalizeSales(salesData);
+    const days = Math.min(30, Math.max(7, forecastDays));
     
     const momentum = this.calculateMomentum(cleaned);
     const burst = this.detectBurst(cleaned);
@@ -211,7 +213,7 @@ class IntelligenceService {
     };
 
     if (!cleaned.length || cleaned.length < MIN_TRAINING_DAYS) {
-        const rulePred = this.getRuleBasedPredictions(cleaned, FORECAST_DAYS);
+        const rulePred = this.getRuleBasedPredictions(cleaned, days);
         return {
             productId, productName, realtime: realtimeMetrics,
             forecast: {
@@ -230,7 +232,7 @@ class IntelligenceService {
     
     if (!mlAvailable) {
       console.warn('[IntelligenceService] ML offline, using fallback');
-      const rulePred = this.getRuleBasedPredictions(cleaned, FORECAST_DAYS);
+      const rulePred = this.getRuleBasedPredictions(cleaned, days);
       return {
           productId, productName, realtime: realtimeMetrics,
           forecast: {
@@ -245,12 +247,12 @@ class IntelligenceService {
       };
     }
 
-    // ✅ CALL UNIVERSAL ML
-    const aiResult = await this.callMLUniversalPredict(cleaned, FORECAST_DAYS);
+    // ✅ CALL UNIVERSAL ML with specified forecast days
+    const aiResult = await this.callMLUniversalPredict(cleaned, days);
 
     if (!aiResult || !aiResult.success) {
         console.warn('[IntelligenceService] ML failed, using fallback');
-        const rulePred = this.getRuleBasedPredictions(cleaned, FORECAST_DAYS);
+        const rulePred = this.getRuleBasedPredictions(cleaned, days);
         return {
             productId, productName, realtime: realtimeMetrics,
             forecast: {
@@ -267,7 +269,7 @@ class IntelligenceService {
 
     // ✅ SUCCESS - ML WORKING
     const predictions = aiResult.predictions || [];
-    const total7d = predictions.reduce((sum: number, p: any) => sum + (p.predicted_quantity || 0), 0);
+    const totalPrediction = predictions.reduce((sum: number, p: any) => sum + (p.predicted_quantity || 0), 0);
     
     let trend: 'INCREASING' | 'STABLE' | 'DECREASING' = 'STABLE';
     if (predictions.length > 0) {
@@ -278,6 +280,7 @@ class IntelligenceService {
     }
 
     const recommendations = [];
+    const avgPerDay = totalPrediction / days;
     
     if (momentum.status === 'TRENDING_UP' || momentum.status === 'GROWING') {
       recommendations.push({
@@ -285,7 +288,7 @@ class IntelligenceService {
         message: `${productName} tren naik. Tambah stok 20-30%.`,
         actionable: true,
         action: `Tingkatkan stok ${productName}`,
-        details: [`Momentum: ${momentum.status}`, `Avg: ${(total7d / 7).toFixed(1)} unit/hari`]
+        details: [`Momentum: ${momentum.status}`, `Avg: ${avgPerDay.toFixed(1)} unit/hari`]
       });
     } else if (momentum.status === 'DECLINING' || momentum.status === 'FALLING') {
       recommendations.push({
@@ -293,7 +296,7 @@ class IntelligenceService {
         message: `${productName} tren turun. Kurangi stok 10-20%.`,
         actionable: true,
         action: `Kurangi stok ${productName}`,
-        details: [`Momentum: ${momentum.status}`, `Avg: ${(total7d / 7).toFixed(1)} unit/hari`]
+        details: [`Momentum: ${momentum.status}`, `Avg: ${avgPerDay.toFixed(1)} unit/hari`]
       });
     }
 
@@ -319,8 +322,8 @@ class IntelligenceService {
               upper_bound: Math.round(p.upper_bound || p.predicted_quantity * 1.2)
             })),
             trend,
-            totalForecast7d: Math.round(total7d),
-            summary: `Prediksi ML universal (${cleaned.length} hari data).`
+            totalForecast7d: Math.round(totalPrediction),
+            summary: `Prediksi ML ${days} hari (${cleaned.length} hari data).`
         },
         recommendations,
         confidence: {

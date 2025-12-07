@@ -4,7 +4,7 @@ export const metadata: Metadata = {
   title: "Input Penjualan",
   description: "Catat penjualan harian dengan cepat dan mudah. Data otomatis tersinkron untuk analisis AI.",
   openGraph: {
-    title: "Input Penjualan - MEGAWAI",
+    title: "Input Penjualan - Megaw AI",
     description: "Catat penjualan harian dengan mudah",
     type: "website",
   },

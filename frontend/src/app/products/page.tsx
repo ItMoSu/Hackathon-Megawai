@@ -5,10 +5,14 @@ import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select'; 
+import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
 import Navbar from '@/components/ui/Navbar';
 import { Package, Plus, TrendingUp, TrendingDown, Minus, PackageOpen, BarChart3, List, ChevronRight, Sparkles, Trash2, ChevronLeft } from "lucide-react";
+import { API_URL } from "@/lib/api";
+import { getToken, getUserId, clearAuth, getAuthHeaders, handleAuthError, requireAuth } from "@/lib/auth";
+import { sanitizeProductName, sanitizeNumber } from "@/lib/sanitize";
+import { logger } from "@/lib/logger";
 
 const UNIT_OPTIONS = [
   { value: 'pcs', label: 'Pcs' },
@@ -62,44 +66,16 @@ export default function ProductsPage() {
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const currentProducts = products.slice(startIndex, endIndex);
 
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem('token');
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}` 
-    };
-  };
-
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const userId = localStorage.getItem('user_id');
-
-      console.log('Auth check:', { hasToken: !!token, hasUserId: !!userId });
-
-      if (!token || !userId) {
-        console.log('No auth, redirecting to login');
-        router.push('/login');
-        return;
-      }
+      if (!requireAuth(router)) return;
       
-      // Use ranking endpoint for enhanced data
-      const res = await fetch(`http://localhost:5000/api/products/ranking`, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
+      const res = await fetch(`${API_URL}/api/products/ranking`, {
+        headers: getAuthHeaders()
       });
 
-      console.log('Ranking response:', res.status, res.statusText);
-
-      if (res.status === 401 || res.status === 403) {
-        localStorage.removeItem('token'); 
-        localStorage.removeItem('user_id');
-        router.push('/login'); 
-        return;
-      }
+      if (handleAuthError(res.status, router)) return;
 
       if (!res.ok) {
         // Check if response is HTML (404 page)
@@ -121,15 +97,11 @@ export default function ProductsPage() {
         setProducts(data.data || []);
       }
     } catch (err) {
-      console.error('Fetch products error:', err);
+      logger.error('Fetch products error:', err);
       // Fallback to regular endpoint
       try {
-        const token = localStorage.getItem('token');
-        const res = await fetch(`http://localhost:5000/api/products`, {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
+        const res = await fetch(`${API_URL}/api/products`, {
+          headers: getAuthHeaders()
         });
         const data = await res.json();
         if (data.success) {
@@ -141,7 +113,7 @@ export default function ProductsPage() {
           })));
         }
       } catch (e) {
-        console.error('Fallback fetch error:', e);
+        logger.error('Fallback fetch error:', e);
       }
     } finally {
       setLoading(false);
@@ -224,16 +196,17 @@ export default function ProductsPage() {
 
     setIsSubmitting(true);
     try {
-      const userId = localStorage.getItem('user_id'); 
+      const userId = getUserId(); 
+      const sanitizedName = sanitizeProductName(name);
 
-      const res = await fetch('http://localhost:5000/api/products', {
+      const res = await fetch(`${API_URL}/api/products`, {
         method: 'POST',
-        headers: getAuthHeaders(), 
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           user_id: userId,
-          name: name.trim(),
+          name: sanitizedName,
           unit: unit,
-          price: price ? parseFloat(price) : null
+          price: price ? sanitizeNumber(price) : null
         })
       });
 
@@ -284,32 +257,22 @@ export default function ProductsPage() {
     setDeletingId(productId);
     setError('');
     
-    // Optimistic update - hapus dari UI dulu
     const previousProducts = [...products];
     setProducts(prev => prev.filter(p => p.id !== productId));
     
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setError('Session habis. Silakan login ulang.');
-        setProducts(previousProducts); // Rollback
-        router.push('/login');
+      if (!requireAuth(router)) {
+        setProducts(previousProducts);
         return;
       }
 
-      const res = await fetch(`http://localhost:5000/api/products/${productId}`, {
+      const res = await fetch(`${API_URL}/api/products/${productId}`, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
+        headers: getAuthHeaders()
       });
 
-      if (res.status === 401 || res.status === 403) {
-        setProducts(previousProducts); // Rollback
-        localStorage.removeItem('token');
-        localStorage.removeItem('user_id');
-        router.push('/login');
+      if (handleAuthError(res.status, router)) {
+        setProducts(previousProducts);
         return;
       }
 
@@ -339,8 +302,8 @@ export default function ProductsPage() {
       }
       // Success - UI sudah terupdate
     } catch (err: any) {
-      console.error('Delete error:', err);
-      setProducts(previousProducts); // Rollback on error
+      logger.error('Delete error:', err);
+      setProducts(previousProducts);
       setError(`Gagal menghapus: ${err.message || 'Network error'}`);
     } finally {
       setDeletingId(null);

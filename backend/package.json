@@ -6,7 +6,7 @@
   "scripts": {
     "seed": "ts-node scripts/seed-data.ts",
     "dev": "nodemon --exec ts-node src/index.ts",
-    "build": "tsc",
+    "build": "prisma generate && tsc",
     "start": "node dist/src/index.js",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -35,7 +35,8 @@
     "multer": "^2.0.2",
     "node-fetch": "^2.7.0",
     "prisma": "^6.19.0",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
