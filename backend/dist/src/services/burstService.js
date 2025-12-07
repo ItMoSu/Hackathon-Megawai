@@ -4,9 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.syncAllProductsWithML = exports.generateBurstAnalytics = void 0;
-const client_1 = require("@prisma/client");
 const axios_1 = __importDefault(require("axios"));
-const prisma = new client_1.PrismaClient();
+const schema_1 = require("../../lib/database/schema");
 const ML_API_URL = (process.env.ML_API_URL || 'http://localhost:8000').replace(/\/$/, '');
 // ✅ UPDATED: Use ML API instead of hardcoded calculations
 const generateBurstAnalytics = async (userId, date) => {
@@ -18,7 +17,7 @@ const generateBurstAnalytics = async (userId, date) => {
             return { processed: 0, message: 'ML service offline' };
         }
         // 2. Get all products for user
-        const products = await prisma.products.findMany({
+        const products = await schema_1.prisma.products.findMany({
             where: { user_id: userId, is_active: true },
             select: { id: true, name: true, dataset_id: true }
         });
@@ -75,7 +74,7 @@ const generateBurstAnalytics = async (userId, date) => {
                 continue; // Skip if no ML data for this product
             }
             // Get sales data for this date
-            const salesData = await prisma.sales.findUnique({
+            const salesData = await schema_1.prisma.sales.findUnique({
                 where: {
                     product_id_sale_date: {
                         product_id: product.id,
@@ -93,7 +92,7 @@ const generateBurstAnalytics = async (userId, date) => {
                 action: mlData.action || null
             };
             // Upsert daily_analytics
-            updates.push(prisma.daily_analytics.upsert({
+            updates.push(schema_1.prisma.daily_analytics.upsert({
                 where: {
                     product_id_metric_date: {
                         product_id: product.id,
@@ -128,7 +127,7 @@ const generateBurstAnalytics = async (userId, date) => {
         }
         // Execute transaction
         if (updates.length > 0) {
-            await prisma.$transaction(updates);
+            await schema_1.prisma.$transaction(updates);
         }
         return {
             processed: updates.length,

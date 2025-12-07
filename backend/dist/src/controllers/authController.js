@@ -5,10 +5,48 @@ exports.register = register;
 exports.login = login;
 const supabaseAdmin_1 = require("../../lib/auth/supabaseAdmin");
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Common weak passwords to reject
+const COMMON_PASSWORDS = [
+    'password', '123456', '12345678', 'qwerty', 'abc123', 'password123',
+    'admin', 'letmein', 'welcome', 'monkey', '1234567890', 'password1'
+];
 function validateEmail(email) {
     return !!email && emailRegex.test(email);
 }
 function validatePassword(password) {
+    if (!password) {
+        return { isValid: false, error: 'Password diperlukan' };
+    }
+    if (password.length < 12) {
+        return { isValid: false, error: 'Password minimal 12 karakter' };
+    }
+    if (password.length > 128) {
+        return { isValid: false, error: 'Password maksimal 128 karakter' };
+    }
+    // Check for at least one uppercase letter
+    if (!/[A-Z]/.test(password)) {
+        return { isValid: false, error: 'Password harus mengandung minimal 1 huruf besar' };
+    }
+    // Check for at least one lowercase letter
+    if (!/[a-z]/.test(password)) {
+        return { isValid: false, error: 'Password harus mengandung minimal 1 huruf kecil' };
+    }
+    // Check for at least one number
+    if (!/[0-9]/.test(password)) {
+        return { isValid: false, error: 'Password harus mengandung minimal 1 angka' };
+    }
+    // Check for at least one special character
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+        return { isValid: false, error: 'Password harus mengandung minimal 1 karakter khusus (!@#$%^&*...)' };
+    }
+    // Check against common passwords
+    if (COMMON_PASSWORDS.includes(password.toLowerCase())) {
+        return { isValid: false, error: 'Password terlalu umum, gunakan password yang lebih kuat' };
+    }
+    return { isValid: true };
+}
+// Legacy simple check for backwards compatibility on login
+function validatePasswordSimple(password) {
     return !!password && password.length >= 6;
 }
 async function findUserByEmail(email) {
@@ -41,10 +79,11 @@ async function register(req, res) {
         if (!validateEmail(email)) {
             return res.status(400).json({ success: false, error: 'Email tidak valid' });
         }
-        if (!validatePassword(password)) {
+        const passwordValidation = validatePassword(password);
+        if (!passwordValidation.isValid) {
             return res
                 .status(400)
-                .json({ success: false, error: 'Password minimal 6 karakter' });
+                .json({ success: false, error: passwordValidation.error });
         }
         const existing = await findUserByEmail(email);
         if (existing) {
@@ -105,7 +144,8 @@ async function login(req, res) {
         if (!validateEmail(email)) {
             return res.status(400).json({ success: false, error: 'Email tidak valid' });
         }
-        if (!validatePassword(password)) {
+        // Use simple validation for login (allows existing users with old passwords)
+        if (!validatePasswordSimple(password)) {
             return res
                 .status(400)
                 .json({ success: false, error: 'Password minimal 6 karakter' });

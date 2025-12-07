@@ -88,10 +88,11 @@ const createProduct = async (req, res) => {
         // Validate price
         let parsedPrice = null;
         if (price !== undefined && price !== null && price !== '') {
-            parsedPrice = parseFloat(price);
-            if (isNaN(parsedPrice) || parsedPrice < 0 || parsedPrice > 999999999) {
+            const parsed = parseFloat(price);
+            if (isNaN(parsed) || parsed < 0 || parsed > 999999999) {
                 return res.status(400).json({ error: "Harga tidak valid" });
             }
+            parsedPrice = parsed;
         }
         const sanitizedName = sanitizeString(name);
         // Case-insensitive check for duplicate names
@@ -188,29 +189,39 @@ const getProductsWithRanking = async (req, res) => {
                 analyticsMap.set(a.product_id, a);
             }
         }
-        // Batch fetch sales for sparkline in ONE query
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const allRecentSales = await schema_1.prisma.sales.findMany({
+        // Batch fetch ALL sales for sparkline (last 30 entries per product)
+        const allSales = await schema_1.prisma.sales.findMany({
             where: {
-                product_id: { in: productIds },
-                sale_date: { gte: sevenDaysAgo }
+                product_id: { in: productIds }
             },
-            orderBy: { sale_date: 'asc' }
+            orderBy: { sale_date: 'desc' },
+            take: productIds.length * 30 // Rough estimate: 30 per product
         });
-        // Group sales by product_id
+        // Group sales by product_id (keep last 7 for sparkline, sum all for total)
         const salesMap = new Map();
-        for (const s of allRecentSales) {
+        const totalSalesMap = new Map();
+        for (const s of allSales) {
+            const qty = Number(s.quantity);
+            // Add to total
+            totalSalesMap.set(s.product_id, (totalSalesMap.get(s.product_id) || 0) + qty);
+            // Add to sparkline (limit to 7 most recent)
             if (!salesMap.has(s.product_id)) {
                 salesMap.set(s.product_id, []);
             }
-            salesMap.get(s.product_id).push(Number(s.quantity));
+            const arr = salesMap.get(s.product_id);
+            if (arr.length < 7) {
+                arr.push(qty);
+            }
+        }
+        // Reverse sparkline data (oldest to newest for chart)
+        for (const [key, arr] of salesMap) {
+            salesMap.set(key, arr.reverse());
         }
         // Build result without additional DB calls
         const productsWithAnalytics = products.map(product => {
             const latestAnalytics = analyticsMap.get(product.id);
             const sparklineData = salesMap.get(product.id) || [];
-            const totalSales7d = sparklineData.reduce((a, b) => a + b, 0);
+            const totalSales = totalSalesMap.get(product.id) || 0;
             return {
                 ...product,
                 price: product.price ? Number(product.price) : null,
@@ -223,7 +234,7 @@ const getProductsWithRanking = async (req, res) => {
                     priority_rank: latestAnalytics.priority_rank
                 } : null,
                 sparkline: sparklineData,
-                totalSales7d
+                totalSales7d: totalSales // Now shows total of all time, not just 7 days
             };
         });
         // Sort by priority score (desc), then by total sales

@@ -11,8 +11,12 @@ import intelligenceRoutes from './routes/intelligenceRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
 import { optionalAuth } from '../lib/auth/middleware';
 import { requestLogger, errorLogger } from './middleware/logger';
+import { warmupConnection, checkConnection } from '../lib/database/schema';
 
 dotenv.config()
+
+// Warmup database connection on cold start
+warmupConnection().catch(console.error)
 
 const app = express()
 const PORT = process.env.PORT || 5000
@@ -112,11 +116,13 @@ app.use('/api/intelligence', intelligenceRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/reports', reportRoutes);
 
-app.get('/health', (req, res) => {
+app.get('/health', async (req, res) => {
+  const dbStatus = await checkConnection()
   res.json({ 
-    status: 'OK', 
+    status: dbStatus.ok ? 'OK' : 'DEGRADED', 
     message: 'Backend is running!',
     timestamp: new Date().toISOString(),
+    database: dbStatus,
     routes: ['/api/products', '/api/products/ranking', '/api/products/:id']
   })
 })
