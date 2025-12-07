@@ -7,8 +7,8 @@ Hackathon project with full-stack implementation using modern web technologies a
 ![Stars](https://img.shields.io/github/stars/Okiled/-IMPHNEN-HEKATON)
 ![Contributors](https://img.shields.io/github/contributors/Okiled/-IMPHNEN-HEKATON)
 ![Languages](https://img.shields.io/github/languages/count/Okiled/-IMPHNEN-HEKATON)
-![TypeScript](https://img.shields.io/badge/TypeScript-64.4%25-blue)
-![Python](https://img.shields.io/badge/Python-35.4%25-yellow)
+![TypeScript](https://img.shields.io/badge/TypeScript-65.7%25-blue)
+![Python](https://img.shields.io/badge/Python-34.1%25-yellow)
 
 ## 👥 Contributors
 
