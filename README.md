@@ -1,4 +1,4 @@
-# 🎯 MEGAWAI PROJECT
+# 🎯 MEGAWAI AI
 
 Hackathon project with full-stack implementation using modern web technologies and machine learning prediction using XGBoost.
 
@@ -18,67 +18,6 @@ Thanks to these amazing people:
 - [@ndhika](https://github.com/ndhika)
 - [@ItMoSu](https://github.com/ItMoSu)
 - [@rizyoff](https://github.com/rizyoff)
-
-## 📁 Project Structure
-
-```
--IMPHNEN-HEKATON/
-├── backend/              # Express.js + Prisma + TypeScript
-│   ├── dist/             # Compiled JavaScript output
-│   ├── lib/              # Library files
-│   ├── node_modules/     # Dependencies
-│   ├── prisma/           # Prisma ORM
-│   │   └── schema.prisma
-│   ├── scripts/          # Utility scripts
-│   ├── src/              # Source code
-│   │   ├── controllers/
-│   │   ├── routes/
-│   │   ├── middlewares/
-│   │   ├── services/
-│   ├── .env              # Environment variables
-│   ├── .gitignore
-│   ├── jest.config.js    # Jest testing configuration
-│   ├── package-lock.json
-│   ├── package.json
-│   └── tsconfig.json     # TypeScript configuration
-├── frontend/             # Next.js + TypeScript + React
-│   ├── .next/            # Next.js build output
-│   ├── node_modules/     # Dependencies
-│   ├── public/           # Static files
-│   ├── src/              # Source code
-│   │   ├── app/          # App Router (Next.js 13+)
-│   │   ├── components/   # React components
-│   │   └── lib/          # Utility functions
-│   ├── .env.local        # Local environment variables
-│   ├── .gitignore
-│   ├── eslint.config.mjs # ESLint configuration
-│   ├── next.config.ts    # Next.js configuration
-│   ├── next-env.d.ts     # Next.js TypeScript declarations
-│   ├── package-lock.json
-│   ├── package.json
-│   ├── postcss.config.mjs # PostCSS configuration
-│   ├── prisma.config.ts  # Prisma client configuration
-│   ├── README.md         # Frontend documentation
-│   ├── test-login.json   # Test data
-│   └── tsconfig.json     # TypeScript configuration
-├── python-service/       # FastAPI + XGBoost ML Service
-│   ├── .claude/          # Claude AI configurations
-│   ├── config/           # Configuration files
-│   ├── models/           # XGBoost models storage
-│   │   └── artifacts/    # Trained model artifacts
-│   │       ├── xgboost_e9902d96-73b0-...  # Model files
-│   │       ├── __init__.py
-│   │       ├── ensemble.py
-│   │       ├── inventory_optimizer.py
-│   │       ├── profit_analyzer.py
-│   │       ├── weekly_report_ranker.py
-│   │       └── xgboost_optimal.py
-│   ├── training/         # Training scripts and data
-│   ├── main.py           # FastAPI main application
-│   ├── requirements.txt  # Python dependencies
-│   └── .gitignore
-└── README.md
-```
 
 ## 🛠️ Tech Stack
 
