@@ -19,6 +19,10 @@ Thanks to these amazing people:
 - [@ItMoSu](https://github.com/ItMoSu)
 - [@rizyoff](https://github.com/rizyoff)
 
+
+## 🎥 Video Demo
+![Video](https://youtu.be/Hmn-DI598RI)
+
 ## 📸 Screenshots
 
 ### 🏠 Beranda (Landing Page)
@@ -41,9 +45,6 @@ Thanks to these amazing people:
 ![Laporan](docs/screenshots/laporan.png)
 *Laporan lengkap dengan prediksi menggunakan XGBoost model*
 
-### 🤖 ML Features Integration
-![ML Integration](docs/screenshots/ml-integration.png)
-*XGBoost models terintegrasi di fitur Laporan untuk prediksi inventory, profit analysis, dan weekly report ranking*
 
 ## 🛠️ Tech Stack
 
