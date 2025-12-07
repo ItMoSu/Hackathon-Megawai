@@ -14,6 +14,8 @@ const navLinks = [
   { name: "Reports", href: "/reports" },
 ];
 
+let hasAnimated = false;
+
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -106,6 +108,8 @@ export default function Navbar() {
                 </>
               )}
             </div>
+          </div>
+        </div>
 
             {/* Mobile Menu Button */}
             <button

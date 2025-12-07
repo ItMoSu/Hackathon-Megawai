@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
+import { SWRProvider } from "@/lib/swr-config";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -11,6 +12,23 @@ const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-space-grotesk",
 });
+
+const siteConfig = {
+  name: "Megaw AI",
+  description: "AI-Powered Sales Intelligence untuk UMKM Indonesia. Prediksi penjualan, analisis tren, dan rekomendasi bisnis cerdas.",
+  url: "https://megawai.id",
+  ogImage: "/og-image.png",
+  keywords: [
+    "UMKM",
+    "sales intelligence",
+    "prediksi penjualan",
+    "AI bisnis",
+    "analisis penjualan",
+    "UMKM Indonesia",
+    "forecast penjualan",
+    "machine learning UMKM",
+  ],
+};
 
 export const metadata: Metadata = {
   title: "Market Pulse - AI-Powered Sales Analytics",

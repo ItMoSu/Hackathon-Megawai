@@ -40,6 +40,48 @@ interface WeeklyReport {
   attentionNeeded: AttentionItem[];
 }
 
+interface ReportData {
+  dateRange: {
+    start: string;
+    end: string;
+  };
+  summary: {
+    totalQuantity: number;
+    totalRevenue: number;
+    quantityChange?: number;
+    revenueChange?: number;
+  };
+  dailyData?: Array<{
+    date: string;
+    quantity: number;
+    revenue: number;
+  }>;
+  topPerformers: Array<{
+    id?: string;
+    name: string;
+    quantity: number;
+    revenue?: number;
+    momentum?: string;
+    momentumValue?: number;
+  }>;
+  attentionNeeded: Array<{
+    id?: string;
+    name: string;
+    date?: string;
+    status: string;
+    detail: string;
+    priority?: string;
+  }>;
+  insights?: string[];
+  statusCounts?: {
+    trending_up: number;
+    growing: number;
+    stable: number;
+    declining: number;
+    falling: number;
+  };
+}
+
 export default function ReportsPage() {
   const router = useRouter();
   const [report, setReport] = useState<WeeklyReport | null>(null);

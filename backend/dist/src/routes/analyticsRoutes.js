@@ -7,6 +7,8 @@ const authMiddleware_1 = require("../middleware/authMiddleware");
 const router = (0, express_1.Router)();
 // All routes require authentication
 router.use(authMiddleware_1.authenticateToken);
+// Dashboard summary (must be before other routes to avoid conflicts)
+router.get('/summary', analyticsController_1.AnalyticsController.getDashboardSummary);
 // Product forecast
 router.get('/products/:productId/forecast', analyticsController_1.AnalyticsController.getProductForecast);
 // Product insights

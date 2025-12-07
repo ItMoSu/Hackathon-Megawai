@@ -127,7 +127,11 @@ class WeeklyReportRanker:
         critical_bursts = sum(1 for p in products if p.get("burst", {}).get("level") == "CRITICAL")
         high_bursts = sum(1 for p in products if p.get("burst", {}).get("level") == "HIGH")
 
-        health_score = ((trending_up + growing) * 2 + stable * 1 - (falling + declining) * 1) / total * 50 + 50
+        # Avoid division by zero - if no products, set default neutral score
+        if total == 0:
+            health_score = 50.0
+        else:
+            health_score = ((trending_up + growing) * 2 + stable * 1 - (falling + declining) * 1) / total * 50 + 50
 
         if health_score >= 80:
             health_status = "EXCELLENT"
@@ -147,11 +151,12 @@ class WeeklyReportRanker:
         if critical_bursts > 0:
             strategic_recs.append(f"🚀 {critical_bursts} produk experiencing VIRAL BURST - scale up produksi!")
 
-        if declining > total * 0.3:
-            strategic_recs.append(f"⚠️ {declining} produk ({declining/total*100:.0f}%) declining - butuh analisis kompetitor dan strategi retention.")
+        if total > 0:
+            if declining > total * 0.3:
+                strategic_recs.append(f"⚠️ {declining} produk ({declining/total*100:.0f}%) declining - butuh analisis kompetitor dan strategi retention.")
 
-        if trending_up > total * 0.3:
-            strategic_recs.append(f"📈 {trending_up} produk ({trending_up/total*100:.0f}%) trending up - capitalize momentum dengan marketing push!")
+            if trending_up > total * 0.3:
+                strategic_recs.append(f"📈 {trending_up} produk ({trending_up/total*100:.0f}%) trending up - capitalize momentum dengan marketing push!")
 
         return {
             "portfolio_health": {

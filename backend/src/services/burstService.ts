@@ -1,7 +1,6 @@
-import { PrismaClient } from '@prisma/client';
 import axios from 'axios';
+import { prisma } from '../../lib/database/schema';
 
-const prisma = new PrismaClient();
 const ML_API_URL = (process.env.ML_API_URL || 'http://localhost:8000').replace(/\/$/, '');
 
 // ✅ UPDATED: Use ML API instead of hardcoded calculations
@@ -74,7 +73,7 @@ export const generateBurstAnalytics = async (userId: string, date: Date) => {
     }
 
     // 5. Update or create daily_analytics records
-    const updates = [];
+    const updates: any[] = [];
 
     for (const product of products) {
       const mlData = mlDataMap.get(product.id);

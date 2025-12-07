@@ -1,9 +1,7 @@
 import axios from 'axios';
-import { PrismaClient } from '@prisma/client';
 import { getCalendarFactors } from '../../lib/analytics/calendar';
 import { getSalesData } from '../../lib/database/queries';
-
-const prisma = new PrismaClient();
+import { prisma } from '../../lib/database/schema';
 
 export type SalesPoint = { date: Date | string; quantity: number; productName?: string };
 
@@ -46,7 +44,7 @@ export type ProductIntelligence = {
 
 const ML_API_URL = (process.env.ML_API_URL || 'http://localhost:8000').replace(/\/$/, '');
 const MIN_TRAINING_DAYS = 5; // ✅ LOWERED from 30 to 5 for faster testing
-const FORECAST_DAYS = 7;
+const DEFAULT_FORECAST_DAYS = 7;
 
 class IntelligenceService {
   private normalizeSales(salesData: SalesPoint[]): SalesPoint[] {
@@ -111,21 +109,53 @@ class IntelligenceService {
 
   private getRuleBasedPredictions(salesData: SalesPoint[], days: number) {
     const data = this.normalizeSales(salesData);
-    const baseline = data.reduce((sum, row) => sum + row.quantity, 0) / (data.length || 1);
-    const predictions = [];
+    const predictions: { date: string; predicted_quantity: number; confidence: string; lower_bound: number; upper_bound: number; }[] = [];
     const anchor = data.length ? new Date(data[data.length - 1].date) : new Date();
+
+    // Calculate baseline and trend
+    const quantities = data.map(d => d.quantity);
+    const baseline = quantities.reduce((sum, q) => sum + q, 0) / (quantities.length || 1);
+    
+    // Calculate trend (slope) using last 7 days if available
+    let trend = 0;
+    if (quantities.length >= 3) {
+      const recentDays = Math.min(7, quantities.length);
+      const recent = quantities.slice(-recentDays);
+      const firstHalf = recent.slice(0, Math.floor(recent.length / 2));
+      const secondHalf = recent.slice(Math.floor(recent.length / 2));
+      const avgFirst = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+      const avgSecond = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+      trend = (avgSecond - avgFirst) / recentDays; // daily trend
+    }
+
+    // Calculate variance for realistic bounds
+    const variance = quantities.length > 1 
+      ? Math.sqrt(quantities.reduce((sum, q) => sum + Math.pow(q - baseline, 2), 0) / quantities.length)
+      : baseline * 0.2;
 
     for (let i = 1; i <= days; i += 1) {
       const targetDate = new Date(anchor);
       targetDate.setDate(anchor.getDate() + i);
       const factors = getCalendarFactors({ date: targetDate });
-      const expected = baseline * factors.totalFactor;
+      
+      // Apply trend + calendar factors
+      const trendAdjustment = trend * i;
+      const baseExpected = Math.max(1, baseline + trendAdjustment);
+      const expected = baseExpected * factors.totalFactor;
+      
+      // Add small random variation for more realistic predictions (seeded by date)
+      const dayVariation = 1 + (Math.sin(targetDate.getDate() * 0.5) * 0.1);
+      const finalExpected = expected * dayVariation;
+
+      // Bounds based on actual variance
+      const boundRange = Math.max(variance * 0.5, finalExpected * 0.15, 1);
+      
       predictions.push({
         date: targetDate.toISOString().split('T')[0],
-        predicted_quantity: Number(expected.toFixed(2)),
-        confidence: 'LOW',
-        lower_bound: Number((expected * 0.8).toFixed(2)),
-        upper_bound: Number((expected * 1.2).toFixed(2)),
+        predicted_quantity: Math.max(1, Math.round(finalExpected)),
+        confidence: data.length >= 14 ? 'MEDIUM' : 'LOW',
+        lower_bound: Math.max(0, Math.round(finalExpected - boundRange)),
+        upper_bound: Math.round(finalExpected + boundRange),
       });
     }
     return predictions;
@@ -142,7 +172,7 @@ class IntelligenceService {
       const response = await axios.post(
         `${ML_API_URL}/api/ml/predict-universal`,
         { sales_data: salesData, forecast_days: days },
-        { timeout: 15000, headers: { 'Content-Type': 'application/json' } }
+        { timeout: 45000, headers: { 'Content-Type': 'application/json' } } // 45s timeout untuk data besar
       );
 
       if (response.data && response.data.success) return response.data;
@@ -167,8 +197,10 @@ class IntelligenceService {
     productId: string,
     productName: string | undefined,
     salesData: SalesPoint[],
+    forecastDays: number = DEFAULT_FORECAST_DAYS,
   ): Promise<ProductIntelligence> {
     const cleaned = this.normalizeSales(salesData);
+    const days = Math.min(30, Math.max(7, forecastDays));
     
     const momentum = this.calculateMomentum(cleaned);
     const burst = this.detectBurst(cleaned);
@@ -181,7 +213,7 @@ class IntelligenceService {
     };
 
     if (!cleaned.length || cleaned.length < MIN_TRAINING_DAYS) {
-        const rulePred = this.getRuleBasedPredictions(cleaned, FORECAST_DAYS);
+        const rulePred = this.getRuleBasedPredictions(cleaned, days);
         return {
             productId, productName, realtime: realtimeMetrics,
             forecast: {
@@ -200,7 +232,7 @@ class IntelligenceService {
     
     if (!mlAvailable) {
       console.warn('[IntelligenceService] ML offline, using fallback');
-      const rulePred = this.getRuleBasedPredictions(cleaned, FORECAST_DAYS);
+      const rulePred = this.getRuleBasedPredictions(cleaned, days);
       return {
           productId, productName, realtime: realtimeMetrics,
           forecast: {
@@ -215,12 +247,12 @@ class IntelligenceService {
       };
     }
 
-    // ✅ CALL UNIVERSAL ML
-    const aiResult = await this.callMLUniversalPredict(cleaned, FORECAST_DAYS);
+    // ✅ CALL UNIVERSAL ML with specified forecast days
+    const aiResult = await this.callMLUniversalPredict(cleaned, days);
 
     if (!aiResult || !aiResult.success) {
         console.warn('[IntelligenceService] ML failed, using fallback');
-        const rulePred = this.getRuleBasedPredictions(cleaned, FORECAST_DAYS);
+        const rulePred = this.getRuleBasedPredictions(cleaned, days);
         return {
             productId, productName, realtime: realtimeMetrics,
             forecast: {
@@ -237,7 +269,7 @@ class IntelligenceService {
 
     // ✅ SUCCESS - ML WORKING
     const predictions = aiResult.predictions || [];
-    const total7d = predictions.reduce((sum: number, p: any) => sum + (p.predicted_quantity || 0), 0);
+    const totalPrediction = predictions.reduce((sum: number, p: any) => sum + (p.predicted_quantity || 0), 0);
     
     let trend: 'INCREASING' | 'STABLE' | 'DECREASING' = 'STABLE';
     if (predictions.length > 0) {
@@ -247,7 +279,8 @@ class IntelligenceService {
         else if (last < first * 0.95) trend = 'DECREASING';
     }
 
-    const recommendations = [];
+    const recommendations: { type: string; priority: 'URGENT' | 'HIGH' | 'MEDIUM' | 'LOW'; message: string; actionable: boolean; action: string; details: string[]; }[] = [];
+    const avgPerDay = totalPrediction / days;
     
     if (momentum.status === 'TRENDING_UP' || momentum.status === 'GROWING') {
       recommendations.push({
@@ -255,7 +288,7 @@ class IntelligenceService {
         message: `${productName} tren naik. Tambah stok 20-30%.`,
         actionable: true,
         action: `Tingkatkan stok ${productName}`,
-        details: [`Momentum: ${momentum.status}`, `Avg: ${(total7d / 7).toFixed(1)} unit/hari`]
+        details: [`Momentum: ${momentum.status}`, `Avg: ${avgPerDay.toFixed(1)} unit/hari`]
       });
     } else if (momentum.status === 'DECLINING' || momentum.status === 'FALLING') {
       recommendations.push({
@@ -263,7 +296,7 @@ class IntelligenceService {
         message: `${productName} tren turun. Kurangi stok 10-20%.`,
         actionable: true,
         action: `Kurangi stok ${productName}`,
-        details: [`Momentum: ${momentum.status}`, `Avg: ${(total7d / 7).toFixed(1)} unit/hari`]
+        details: [`Momentum: ${momentum.status}`, `Avg: ${avgPerDay.toFixed(1)} unit/hari`]
       });
     }
 
@@ -280,17 +313,17 @@ class IntelligenceService {
     return {
         productId, productName, realtime: realtimeMetrics,
         forecast: {
-            method: 'hybrid-ml (universal)', // ✅ THIS SHOULD SHOW NOW
+            method: 'hybrid-ml (universal)',
             predictions: predictions.map((p: any) => ({
               date: p.date,
-              predicted_quantity: p.predicted_quantity,
+              predicted_quantity: Math.round(p.predicted_quantity),
               confidence: p.confidence || 'MEDIUM',
-              lower_bound: p.lower_bound,
-              upper_bound: p.upper_bound
+              lower_bound: Math.round(p.lower_bound || p.predicted_quantity * 0.8),
+              upper_bound: Math.round(p.upper_bound || p.predicted_quantity * 1.2)
             })),
             trend,
-            totalForecast7d: Number(total7d.toFixed(0)),
-            summary: `Prediksi ML universal (${cleaned.length} hari data).`
+            totalForecast7d: Math.round(totalPrediction),
+            summary: `Prediksi ML ${days} hari (${cleaned.length} hari data).`
         },
         recommendations,
         confidence: {
@@ -303,13 +336,32 @@ class IntelligenceService {
 
   async getWeeklyReport(userId: string, topN: number = 10) {
     try {
-      return {
-        summary: { burst_alerts: 0 },
-        topPerformers: [],
-        needsAttention: [],
-        insights: ['Weekly report integration pending'],
-        generatedAt: new Date().toISOString()
-      };
+      const mlAvailable = await this.isMLAvailable();
+
+      if (mlAvailable) {
+        try {
+          const response = await axios.get(`${ML_API_URL}/api/ml/report/weekly`, {
+            params: { top_n: topN, include_insights: true },
+            timeout: 30000
+          });
+
+          if (response.data?.success && response.data?.report) {
+            const report = response.data.report;
+            return {
+              summary: report.summary || { burst_alerts: 0 },
+              topPerformers: report.top_performers || [],
+              needsAttention: report.needs_attention || [],
+              insights: report.insights || [],
+              generatedAt: response.data.generated_at || new Date().toISOString()
+            };
+          }
+        } catch (mlError: any) {
+          console.warn('[IntelligenceService] ML weekly report failed:', mlError.message);
+        }
+      }
+
+      // Fallback: Generate report from local data
+      return await this.generateLocalWeeklyReport(userId, topN);
     } catch (error) {
       console.error('[IntelligenceService] Weekly report error:', error);
       return {
@@ -320,6 +372,106 @@ class IntelligenceService {
         generatedAt: new Date().toISOString()
       };
     }
+  }
+
+  private async generateLocalWeeklyReport(userId: string, topN: number) {
+    try {
+      // Get all user products
+      const products = await prisma.products.findMany({
+        where: { user_id: userId, is_active: true },
+        select: { id: true, name: true }
+      });
+
+      const topPerformers: any[] = [];
+      const needsAttention: any[] = [];
+      let burstCount = 0;
+
+      for (const product of products) {
+        try {
+          const salesData = await getSalesData(userId, product.id, 14);
+          if (salesData.length >= 5) {
+            const momentum = this.calculateMomentum(salesData);
+            const burst = this.detectBurst(salesData);
+            const total = salesData.reduce((sum, s) => sum + Number(s.quantity), 0);
+
+            const productReport = {
+              product_id: product.id,
+              product_name: product.name,
+              total_sales: total,
+              momentum: momentum,
+              burst: {
+                level: burst.severity,
+                score: burst.score
+              }
+            };
+
+            // Categorize by momentum
+            if (momentum.status === 'TRENDING_UP' || momentum.status === 'GROWING') {
+              topPerformers.push(productReport);
+            }
+            if (momentum.status === 'DECLINING' || momentum.status === 'FALLING') {
+              needsAttention.push(productReport);
+            }
+            if (burst.severity === 'HIGH' || burst.severity === 'CRITICAL') {
+              burstCount++;
+            }
+          }
+        } catch (err) {
+          console.error(`[WeeklyReport] Error for ${product.id}:`, err);
+        }
+      }
+
+      // Sort by total sales
+      topPerformers.sort((a, b) => b.total_sales - a.total_sales);
+      needsAttention.sort((a, b) => a.momentum.combined - b.momentum.combined);
+
+      return {
+        summary: {
+          burst_alerts: burstCount,
+          total_products: products.length,
+          trending_up: topPerformers.length,
+          needs_attention: needsAttention.length
+        },
+        topPerformers: topPerformers.slice(0, topN),
+        needsAttention: needsAttention.slice(0, topN),
+        insights: this.generateInsights(topPerformers, needsAttention, burstCount),
+        generatedAt: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('[IntelligenceService] Local report error:', error);
+      return {
+        summary: { burst_alerts: 0 },
+        topPerformers: [],
+        needsAttention: [],
+        insights: [],
+        generatedAt: new Date().toISOString()
+      };
+    }
+  }
+
+  private generateInsights(topPerformers: any[], needsAttention: any[], burstCount: number): string[] {
+    const insights: string[] = [];
+
+    if (topPerformers.length > 0) {
+      insights.push(`${topPerformers.length} produk menunjukkan tren naik`);
+      if (topPerformers[0]) {
+        insights.push(`${topPerformers[0].product_name} adalah produk dengan performa terbaik`);
+      }
+    }
+
+    if (needsAttention.length > 0) {
+      insights.push(`${needsAttention.length} produk membutuhkan perhatian (tren turun)`);
+    }
+
+    if (burstCount > 0) {
+      insights.push(`${burstCount} produk mengalami lonjakan penjualan`);
+    }
+
+    if (insights.length === 0) {
+      insights.push('Performa produk stabil minggu ini');
+    }
+
+    return insights;
   }
 
   async getTrendingProducts(userId: string) {

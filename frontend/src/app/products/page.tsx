@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select'; 
+import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
 import Navbar from '@/components/ui/Navbar';
 import { 
@@ -31,7 +31,7 @@ const UNIT_OPTIONS = [
   { value: 'box', label: 'Box' },
 ];
 
-interface Product {
+interface ProductWithAnalytics {
   id: string;
   name: string;
   unit: string;
@@ -40,6 +40,10 @@ interface Product {
   burst?: { score: number; level: string };
   avgQuantity?: number;
 }
+
+type ViewMode = 'grid' | 'ranking';
+
+const ITEMS_PER_PAGE = 10;
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -54,13 +58,11 @@ export default function ProductsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem('token');
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}` 
-    };
-  };
+  // Pagination logic
+  const totalPages = Math.ceil(products.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const currentProducts = products.slice(startIndex, endIndex);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -125,9 +127,25 @@ export default function ProductsPage() {
     }
   };
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
+  const validatePrice = (value: string): string | null => {
+    if (!value) return null; // Price is optional
+    
+    const numPrice = parseFloat(value);
+    
+    if (isNaN(numPrice)) {
+      return "Harga harus berupa angka";
+    }
+    
+    if (numPrice < 0) {
+      return "Harga tidak boleh negatif";
+    }
+    
+    if (numPrice > 999999999) {
+      return "Harga terlalu besar";
+    }
+    
+    return null;
+  };
 
   useEffect(() => {
     if (products.length > 0) {
@@ -146,11 +164,12 @@ export default function ProductsPage() {
 
     setIsSubmitting(true);
     try {
-      const userId = localStorage.getItem('user_id'); 
+      const userId = getUserId(); 
+      const sanitizedName = sanitizeProductName(name);
 
-      const res = await fetch('http://localhost:5000/api/products', {
+      const res = await fetch(`${API_URL}/api/products`, {
         method: 'POST',
-        headers: getAuthHeaders(), 
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           user_id: userId,
           name: name.trim(),
@@ -162,7 +181,22 @@ export default function ProductsPage() {
       const result = await res.json();
 
       if (!res.ok) {
-        throw new Error(result.error || "Gagal menyimpan");
+        if (result.error?.includes('sudah ada') || result.error?.includes('already exist')) {
+          setError(`Produk "${name.trim()}" sudah ada! Gunakan nama lain.`);
+        } else {
+          setError(result.error || "Gagal menyimpan");
+        }
+        return;
+      }
+
+      // Optimistic update - langsung tambah ke UI
+      if (result.data) {
+        addProduct({
+          ...result.data,
+          analytics: null,
+          sparkline: [],
+          totalSales7d: 0
+        });
       }
 
       setName('');
@@ -172,7 +206,7 @@ export default function ProductsPage() {
       fetchProducts();
       
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Terjadi kesalahan");
     } finally {
       setIsSubmitting(false);
     }

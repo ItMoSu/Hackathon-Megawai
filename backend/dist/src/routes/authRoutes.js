@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const authController_1 = require("../controllers/authController");
 const router = express_1.default.Router();
+// No rate limiting - Supabase handles duplicate email validation
 router.post('/check-email', authController_1.checkEmail);
 router.post('/register', authController_1.register);
 router.post('/login', authController_1.login);

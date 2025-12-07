@@ -1,0 +1,449 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { IntelligenceDashboard } from "@/components/IntelligenceDashboard";
+import { Card, CardContent, CardHeader } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import Navbar from "@/components/ui/Navbar";
+import { ArrowLeft, Package, TrendingUp, TrendingDown, Minus, Edit2, Save, X, Trash2, AlertTriangle } from "lucide-react";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { API_URL } from "@/lib/api";
+import { getAuthHeaders, handleAuthError } from "@/lib/auth";
+import { logger } from "@/lib/logger";
+
+const UNIT_OPTIONS = [
+  { value: 'pcs', label: 'Pcs' },
+  { value: 'porsi', label: 'Porsi' },
+  { value: 'cup', label: 'Cup' },
+  { value: 'botol', label: 'Botol' },
+  { value: 'bungkus', label: 'Bungkus' },
+  { value: 'kg', label: 'Kg' },
+  { value: 'box', label: 'Box' },
+];
+
+interface ProductDetail {
+  product: {
+    id: string;
+    name: string;
+    unit: string;
+    price: number | null;
+    is_active: boolean;
+  };
+  analytics: {
+    momentum_combined: number;
+    momentum_label: string;
+    burst_score: number;
+    burst_level: string;
+    priority_score: number;
+  } | null;
+  salesHistory: Array<{
+    date: string;
+    quantity: number;
+    revenue: number | null;
+  }>;
+  analyticsHistory: Array<{
+    date: string;
+    actual: number;
+    forecast: number | null;
+    momentum: number;
+  }>;
+}
+
+interface Props {
+  productId: string;
+}
+
+export default function ProductDetailClient({ productId }: Props) {
+  const router = useRouter();
+
+  const [data, setData] = useState<ProductDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editUnit, setEditUnit] = useState('');
+  const [editPrice, setEditPrice] = useState('');
+  const [saving, setSaving] = useState(false);
+  
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const fetchProductDetail = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_URL}/api/products/${productId}`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store'
+      });
+
+      if (handleAuthError(res.status, router)) return;
+
+      if (!res.ok) {
+        throw new Error('Produk tidak ditemukan');
+      }
+
+      const result = await res.json();
+      if (result.success) {
+        setData(result.data);
+        setEditName(result.data.product.name);
+        setEditUnit(result.data.product.unit);
+        setEditPrice(result.data.product.price?.toString() || '');
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [productId, router]);
+
+  useEffect(() => {
+    if (productId) {
+      fetchProductDetail();
+    }
+  }, [productId, fetchProductDetail]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`${API_URL}/api/products/${productId}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          name: editName,
+          unit: editUnit,
+          price: editPrice ? parseFloat(editPrice) : null
+        })
+      });
+
+      if (res.ok) {
+        await fetchProductDetail();
+        setIsEditing(false);
+      }
+    } catch (err) {
+      logger.error('Save product error:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const res = await fetch(`${API_URL}/api/products/${productId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+
+      const result = await res.json();
+
+      if (res.ok && result.success) {
+        router.push('/products');
+      } else {
+        alert(result.error || 'Gagal menghapus produk');
+      }
+    } catch (err) {
+      logger.error('Delete product error:', err);
+      alert('Gagal menghapus produk');
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  const getMomentumBadge = (label: string | undefined) => {
+    switch (label) {
+      case 'TRENDING_UP':
+        return <Badge className="bg-green-100 text-green-700">Trending Up</Badge>;
+      case 'GROWING':
+        return <Badge className="bg-emerald-50 text-emerald-600">Growing</Badge>;
+      case 'FALLING':
+        return <Badge className="bg-red-100 text-red-700">Falling</Badge>;
+      case 'DECLINING':
+        return <Badge className="bg-orange-100 text-orange-700">Declining</Badge>;
+      default:
+        return <Badge className="bg-gray-100 text-gray-600">Stable</Badge>;
+    }
+  };
+
+  const formatRupiah = (num: number | null) => {
+    if (!num) return '-';
+    return new Intl.NumberFormat("id-ID", { 
+      style: "currency", 
+      currency: "IDR", 
+      minimumFractionDigits: 0 
+    }).format(num);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <Button variant="outline" onClick={() => router.back()} className="mb-4">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Kembali
+          </Button>
+          <Card>
+            <CardContent className="p-8 text-center">
+              <p className="text-red-600 font-medium">{error || 'Produk tidak ditemukan'}</p>
+              <Button className="mt-4" onClick={() => router.push('/products')}>
+                Ke Halaman Produk
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  const { product, analytics, salesHistory } = data;
+  const totalSales = salesHistory.reduce((sum, s) => sum + s.quantity, 0);
+  const totalRevenue = salesHistory.reduce((sum, s) => sum + (s.revenue || 0), 0);
+
+  return (
+    <div className="min-h-screen bg-gray-50 text-slate-900">
+      <Navbar />
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-6">
+          <Button variant="outline" onClick={() => router.back()} className="mb-4 text-gray-600 hover:text-gray-900">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Kembali ke Produk
+          </Button>
+
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <Card className="flex-1">
+              <CardContent className="p-6">
+                {isEditing ? (
+                  <div className="space-y-4">
+                    <Input 
+                      label="Nama Produk"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                    />
+                    <Select 
+                      label="Unit"
+                      options={UNIT_OPTIONS}
+                      value={editUnit}
+                      onChange={(e) => setEditUnit(e.target.value)}
+                    />
+                    <Input 
+                      label="Harga"
+                      type="number"
+                      value={editPrice}
+                      onChange={(e) => setEditPrice(e.target.value)}
+                    />
+                    <div className="flex gap-2">
+                      <Button onClick={handleSave} isLoading={saving} className="bg-green-600 hover:bg-green-700">
+                        <Save className="w-4 h-4 mr-2" />
+                        Simpan
+                      </Button>
+                      <Button variant="outline" onClick={() => setIsEditing(false)}>
+                        <X className="w-4 h-4 mr-2" />
+                        Batal
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3 sm:gap-4">
+                      <div className="p-2 sm:p-3 bg-red-100 rounded-xl flex-shrink-0">
+                        <Package className="w-6 h-6 sm:w-8 sm:h-8 text-red-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{product.name}</h1>
+                        <p className="text-sm sm:text-base text-gray-500">
+                          {formatRupiah(product.price)} / {product.unit}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      {getMomentumBadge(analytics?.momentum_label)}
+                      <div className="flex items-center gap-2 ml-auto">
+                        <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                          <Edit2 className="w-4 h-4 sm:mr-1" />
+                          <span className="hidden sm:inline">Edit</span>
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setShowDeleteConfirm(true)}
+                          className="text-red-600 border-red-200 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4 sm:mr-1" />
+                          <span className="hidden sm:inline">Hapus</span>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <Card className="w-full max-w-md mx-4">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-3 bg-red-100 rounded-full">
+                    <AlertTriangle className="w-6 h-6 text-red-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">Hapus Produk?</h3>
+                    <p className="text-sm text-gray-500">&quot;{product.name}&quot;</p>
+                  </div>
+                </div>
+                
+                <p className="text-gray-600 mb-6">
+                  {salesHistory.length > 0 
+                    ? `Produk ini memiliki ${salesHistory.length} data penjualan. Produk akan dinonaktifkan, bukan dihapus permanen.`
+                    : 'Produk akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.'
+                  }
+                </p>
+
+                <div className="flex gap-3 justify-end">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowDeleteConfirm(false)}
+                    disabled={deleting}
+                  >
+                    Batal
+                  </Button>
+                  <Button 
+                    onClick={handleDelete}
+                    isLoading={deleting}
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    {salesHistory.length > 0 ? 'Nonaktifkan' : 'Hapus'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg w-fit">
+                  <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-xs sm:text-sm text-gray-500">Terjual (30h)</p>
+                  <p className="text-lg sm:text-2xl font-bold text-gray-900">{totalSales}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                <div className="p-2 bg-green-100 rounded-lg w-fit">
+                  <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-xs sm:text-sm text-gray-500">Revenue (30h)</p>
+                  <p className="text-lg sm:text-2xl font-bold text-gray-900">{formatRupiah(totalRevenue)}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="col-span-2 sm:col-span-1">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                <div className="p-2 bg-purple-100 rounded-lg w-fit">
+                  {(analytics?.momentum_combined || 0) > 0 ? 
+                    <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" /> :
+                    (analytics?.momentum_combined || 0) < 0 ?
+                    <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" /> :
+                    <Minus className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
+                  }
+                </div>
+                <div>
+                  <p className="text-xs sm:text-sm text-gray-500">Momentum</p>
+                  <p className="text-lg sm:text-2xl font-bold text-gray-900">
+                    {analytics?.momentum_combined ? 
+                      `${(analytics.momentum_combined * 100).toFixed(1)}%` : 
+                      '0%'
+                    }
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <IntelligenceDashboard productId={productId} />
+
+        <Card className="mt-8">
+          <CardHeader className="border-b">
+            <h3 className="font-bold text-gray-900">Riwayat Penjualan (30 Hari Terakhir)</h3>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Quantity</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Revenue</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {salesHistory.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="px-6 py-8 text-center text-gray-500">
+                        Belum ada data penjualan
+                      </td>
+                    </tr>
+                  ) : (
+                    salesHistory.slice().reverse().map((sale, idx) => (
+                      <tr key={idx} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {new Date(sale.date).toLocaleDateString('id-ID', {
+                            weekday: 'short',
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900 text-right font-medium">
+                          {sale.quantity} {product.unit}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900 text-right">
+                          {formatRupiah(sale.revenue)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </main>
+    </div>
+  );
+}

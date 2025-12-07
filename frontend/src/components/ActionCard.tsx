@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { ChevronDown, ChevronUp, CheckCircle2, AlarmClock, Flame, AlertTriangle } from "lucide-react";
 import { Recommendation } from "@/types/intelligence";
 import { Button } from "./ui/Button";
 
-const PRIORITY_LABEL: Record<Recommendation["priority"], { label: string; color: string; icon: JSX.Element }> = {
+const PRIORITY_LABEL: Record<Recommendation["priority"], { label: string; color: string; icon: React.ReactNode }> = {
   URGENT: { label: "TINDAKAN SEGERA", color: "bg-red-100 text-red-700 border-red-200", icon: <Flame className="h-5 w-5 text-red-600" /> },
   HIGH: { label: "PENTING", color: "bg-orange-100 text-orange-700 border-orange-200", icon: <AlertTriangle className="h-5 w-5 text-orange-600" /> },
   MEDIUM: { label: "LAKUKAN 2-3 HARI", color: "bg-yellow-100 text-yellow-700 border-yellow-200", icon: <AlarmClock className="h-5 w-5 text-yellow-600" /> },

@@ -83,7 +83,7 @@ function DashboardContent() {
         }
       }
     } catch (err) {
-      console.error("Gagal load produk:", err);
+      logger.error("Gagal load produk:", err);
     }
   };
 
@@ -98,7 +98,7 @@ function DashboardContent() {
         setSummary(data.summary);
       }
     } catch (err) {
-      console.error("Gagal load summary:", err);
+      logger.error("Gagal load summary:", err);
     } finally {
       setLoadingSummary(false);
     }

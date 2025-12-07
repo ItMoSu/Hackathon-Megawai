@@ -1,12 +1,13 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Megaw AI Backend API",
   "main": "index.js",
   "scripts": {
+    "postinstall": "prisma generate",
     "seed": "ts-node scripts/seed-data.ts",
-    "dev": "nodemon --exec ts-node src/index.ts", 
-    "build": "tsc",
+    "dev": "nodemon --exec ts-node src/index.ts",
+    "build": "prisma generate && tsc",
     "start": "node dist/src/index.js",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -16,24 +17,32 @@
     "db:studio": "prisma studio",
     "db:test": "ts-node ./lib/database/test-connection.ts"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "megaw-ai",
+    "sales-forecasting",
+    "ml"
+  ],
+  "author": "Megaw AI Team",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
     "@prisma/client": "^6.19.0",
     "@supabase/supabase-js": "^2.86.0",
+    "@types/multer": "^2.0.0",
     "@types/uuid": "^11.0.0",
     "axios": "^1.13.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "i": "^0.3.7",
-    "jose": "^6.1.2",
+    "express-rate-limit": "^7.5.1",
+    "helmet": "^8.1.0",
+    "jose": "^4.15.9",
     "jwks-rsa": "^3.2.0",
+    "multer": "^2.0.2",
     "node-fetch": "^2.7.0",
     "prisma": "^6.19.0",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

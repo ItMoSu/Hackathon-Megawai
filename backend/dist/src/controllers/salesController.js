@@ -1,10 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteSales = exports.getSalesById = exports.getSalesData = exports.createSalesEntry = void 0;
+exports.uploadSalesFile = exports.getSalesHistory = exports.createBulkSales = exports.deleteSales = exports.getSalesById = exports.getSalesData = exports.createSalesEntry = void 0;
 const schema_1 = require("../../lib/database/schema");
 const queries_1 = require("../../lib/database/queries");
 const intelligenceService_1 = require("../services/intelligenceService");
 const burstService_1 = require("../services/burstService");
+const fileParser_1 = require("../utils/fileParser");
 /**
  * POST /api/sales
  * Create new sales entry with AI analysis
@@ -30,23 +31,25 @@ const createSalesEntry = async (req, res) => {
         const saleDateObj = new Date(sale_date);
         // 1. Get or create dataset
         if (!dataset_id) {
-            const userDataset = await schema_1.prisma.datasets.findFirst({
-                where: { user_id: userId },
-                orderBy: { created_at: 'desc' }
+            // dataset khusus untuk manual input
+            let targetDataset = await schema_1.prisma.datasets.findFirst({
+                where: {
+                    user_id: userId,
+                    source_file_type: 'csv'
+                }
             });
-            if (userDataset) {
-                dataset_id = userDataset.id;
+            if (targetDataset) {
+                dataset_id = targetDataset.id;
             }
             else {
-                // Create default dataset for user
                 const newDataset = await schema_1.prisma.datasets.create({
                     data: {
                         user_id: userId,
-                        name: 'Default Dataset',
-                        source_file_name: 'manual_input',
-                        source_file_type: 'manual',
+                        name: 'Manual_Input_Sales',
+                        source_file_name: 'manual_entry',
+                        source_file_type: 'csv',
                         storage_path: '',
-                        status: 'active'
+                        status: 'ready'
                     }
                 });
                 dataset_id = newDataset.id;
@@ -57,7 +60,7 @@ const createSalesEntry = async (req, res) => {
                 productName: product_name,
                 date: saleDateObj,
                 quantity: qtyNumber,
-                source: 'manual'
+                source: 'csv'
             }]);
         // 3. Find product ID if not provided
         if (!product_id && product_name) {
@@ -174,14 +177,43 @@ const getSalesData = async (req, res) => {
         if (product_id) {
             where.product_id = String(product_id);
         }
-        if (start_date || end_date) {
-            where.sale_date = {};
-            if (start_date) {
-                where.sale_date.gte = new Date(String(start_date));
+        // Date validation helper
+        const parseAndValidateDate = (dateStr, fieldName) => {
+            if (!dateStr)
+                return null;
+            const date = new Date(String(dateStr));
+            if (isNaN(date.getTime())) {
+                throw new Error(`Format ${fieldName} tidak valid. Gunakan format YYYY-MM-DD`);
             }
-            if (end_date) {
-                where.sale_date.lte = new Date(String(end_date));
+            return date;
+        };
+        try {
+            if (start_date || end_date) {
+                where.sale_date = {};
+                if (start_date) {
+                    const parsedStart = parseAndValidateDate(start_date, 'start_date');
+                    if (parsedStart)
+                        where.sale_date.gte = parsedStart;
+                }
+                if (end_date) {
+                    const parsedEnd = parseAndValidateDate(end_date, 'end_date');
+                    if (parsedEnd)
+                        where.sale_date.lte = parsedEnd;
+                }
+                // Validate date range
+                if (where.sale_date.gte && where.sale_date.lte && where.sale_date.gte > where.sale_date.lte) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'start_date harus lebih awal dari end_date'
+                    });
+                }
             }
+        }
+        catch (dateError) {
+            return res.status(400).json({
+                success: false,
+                error: dateError instanceof Error ? dateError.message : 'Format tanggal tidak valid'
+            });
         }
         // Query sales data
         const salesData = await schema_1.prisma.sales.findMany({
@@ -299,3 +331,365 @@ const deleteSales = async (req, res) => {
     }
 };
 exports.deleteSales = deleteSales;
+/**
+ * POST /api/sales/bulk
+ * Bulk create sales entries for multiple products at once
+ */
+const createBulkSales = async (req, res) => {
+    try {
+        const userId = req.user?.sub;
+        const { sale_date, entries } = req.body;
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                error: "User tidak terotentikasi"
+            });
+        }
+        if (!entries || !Array.isArray(entries) || entries.length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: "Entries harus berupa array dan tidak boleh kosong"
+            });
+        }
+        const saleDateObj = new Date(sale_date);
+        // Get or create dataset
+        let targetDataset = await schema_1.prisma.datasets.findFirst({
+            where: {
+                user_id: userId,
+                source_file_type: 'csv'
+            }
+        });
+        let dataset_id;
+        if (targetDataset) {
+            dataset_id = targetDataset.id;
+        }
+        else {
+            const newDataset = await schema_1.prisma.datasets.create({
+                data: {
+                    user_id: userId,
+                    name: 'Manual_Input_Sales',
+                    source_file_name: 'manual_entry',
+                    source_file_type: 'csv',
+                    storage_path: '',
+                    status: 'ready'
+                }
+            });
+            dataset_id = newDataset.id;
+        }
+        // Filter entries with quantity > 0
+        const validEntries = entries.filter((e) => e.quantity > 0);
+        if (validEntries.length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: "Tidak ada produk dengan quantity > 0"
+            });
+        }
+        // Prepare bulk upsert data
+        const salesData = validEntries.map((entry) => ({
+            productName: entry.product_name,
+            date: saleDateObj,
+            quantity: Number(entry.quantity),
+            source: 'csv'
+        }));
+        // Bulk upsert
+        await (0, queries_1.bulkUpsertSales)(userId, dataset_id, salesData);
+        // Run AI analysis for each product (async, don't block response)
+        const analysisPromises = validEntries.map(async (entry) => {
+            try {
+                const product = await schema_1.prisma.products.findFirst({
+                    where: { id: entry.product_id, user_id: userId }
+                });
+                if (!product)
+                    return null;
+                const history = await schema_1.prisma.sales.findMany({
+                    where: {
+                        product_id: entry.product_id,
+                        user_id: userId
+                    },
+                    orderBy: { sale_date: 'desc' },
+                    take: 60
+                });
+                if (history.length >= 5) {
+                    const salesHistory = history.map(h => ({
+                        date: h.sale_date,
+                        quantity: Number(h.quantity),
+                        productName: product.name
+                    }));
+                    const analysis = await intelligenceService_1.intelligenceService.analyzeProduct(product.id, product.name, salesHistory);
+                    if (analysis) {
+                        await (0, queries_1.upsertAnalyticsResult)(userId, dataset_id, product.id, saleDateObj, {
+                            actualQty: Number(entry.quantity),
+                            burstScore: analysis.realtime.burst.score,
+                            burstLevel: analysis.realtime.burst.severity,
+                            momentumCombined: analysis.realtime.momentum.combined,
+                            momentumLabel: analysis.realtime.momentum.status,
+                            aiInsight: {
+                                source: 'intelligenceService',
+                                method: analysis.forecast.method,
+                                confidence: analysis.confidence.overall,
+                                trend: analysis.forecast.trend
+                            }
+                        });
+                    }
+                }
+            }
+            catch (err) {
+                console.error(`[BulkSales] Analysis error for ${entry.product_id}:`, err);
+            }
+        });
+        // Run background analysis with proper error handling
+        // Using setImmediate to ensure response is sent first
+        setImmediate(async () => {
+            try {
+                await Promise.allSettled(analysisPromises);
+                console.log(`[BulkSales] Background analysis completed for ${validEntries.length} products`);
+            }
+            catch (err) {
+                console.error('[BulkSales] Background analysis failed:', err);
+            }
+            try {
+                await (0, burstService_1.generateBurstAnalytics)(userId, saleDateObj);
+                console.log(`[BulkSales] Burst analytics completed for date ${saleDateObj.toISOString()}`);
+            }
+            catch (err) {
+                console.error('[BulkSales] Burst analytics failed:', err);
+            }
+        });
+        res.status(201).json({
+            success: true,
+            message: `${validEntries.length} produk berhasil disimpan`,
+            data: {
+                sale_date: saleDateObj.toISOString().split('T')[0],
+                products_saved: validEntries.length,
+                entries: validEntries.map((e) => ({
+                    product_id: e.product_id,
+                    product_name: e.product_name,
+                    quantity: e.quantity
+                }))
+            }
+        });
+    }
+    catch (error) {
+        console.error("[SalesController] Bulk create error:", error);
+        res.status(500).json({
+            success: false,
+            error: error instanceof Error ? error.message : "Server Error"
+        });
+    }
+};
+exports.createBulkSales = createBulkSales;
+/**
+ * GET /api/sales/history
+ * Get recent sales history for display
+ */
+const getSalesHistory = async (req, res) => {
+    try {
+        const userId = req.user?.sub;
+        const limit = Math.min(Number(req.query.limit) || 20, 100);
+        if (!userId) {
+            return res.status(401).json({ success: false, error: "User tidak terotentikasi" });
+        }
+        const sales = await schema_1.prisma.sales.findMany({
+            where: {
+                products: {
+                    user_id: String(userId)
+                }
+            },
+            include: {
+                products: {
+                    select: { name: true }
+                }
+            },
+            orderBy: { sale_date: 'desc' },
+            take: limit
+        });
+        const history = sales.map(s => ({
+            date: s.sale_date.toISOString().split('T')[0],
+            product_name: s.products?.name || 'Unknown',
+            quantity: Number(s.quantity)
+        }));
+        res.json({ success: true, data: history });
+    }
+    catch (error) {
+        console.error("[SalesController] History error:", error);
+        res.status(500).json({ success: false, error: "Gagal mengambil riwayat" });
+    }
+};
+exports.getSalesHistory = getSalesHistory;
+/**
+ * POST /api/sales/upload
+ * Upload Excel/CSV/Word file for bulk sales import
+ */
+const uploadSalesFile = async (req, res) => {
+    try {
+        const userId = req.user?.sub;
+        const file = req.file;
+        if (!userId) {
+            return res.status(401).json({ success: false, error: "User tidak terotentikasi" });
+        }
+        if (!file) {
+            return res.status(400).json({ success: false, error: "File tidak ditemukan" });
+        }
+        const fileName = file.originalname.toLowerCase();
+        // Parse file with dynamic column detection (supports CSV, Excel, DOCX)
+        let parsedData;
+        try {
+            parsedData = (0, fileParser_1.parseFile)(file.buffer, fileName);
+        }
+        catch (parseError) {
+            return res.status(400).json({
+                success: false,
+                error: parseError instanceof Error ? parseError.message : "Format file tidak didukung"
+            });
+        }
+        if (parsedData.length === 0) {
+            return res.status(400).json({ success: false, error: "Tidak ada data valid dalam file" });
+        }
+        // Get sale_date from request or use today
+        const defaultDate = req.body.sale_date || new Date().toISOString().split('T')[0];
+        // Convert to bulk upsert format - date must be Date object
+        const rows = parsedData.map(item => {
+            const dateStr = item.date || defaultDate;
+            const dateObj = new Date(dateStr + 'T00:00:00');
+            return {
+                productName: item.productName,
+                quantity: item.quantity,
+                date: dateObj
+            };
+        }).filter(row => !isNaN(row.date.getTime())); // Filter invalid dates
+        if (rows.length === 0) {
+            return res.status(400).json({ success: false, error: "Tidak ada data valid dengan tanggal yang benar" });
+        }
+        const { randomUUID } = require('crypto');
+        const uploadDatasetId = randomUUID();
+        const userIdStr = String(userId);
+        const rowCount = rows.length;
+        // For smaller files (< 5000 rows), process synchronously for better UX
+        if (rowCount < 5000) {
+            try {
+                console.log(`[Upload] Sync processing ${rowCount} rows for user ${userIdStr}`);
+                await (0, queries_1.bulkUpsertSales)(userIdStr, uploadDatasetId, rows);
+                // Generate basic analytics for uploaded products
+                const uniqueProducts = [...new Set(rows.map(r => r.productName))];
+                console.log(`[Upload] Generating analytics for ${uniqueProducts.length} products`);
+                // Get product IDs
+                const products = await schema_1.prisma.products.findMany({
+                    where: {
+                        user_id: userIdStr,
+                        name: { in: uniqueProducts }
+                    },
+                    select: { id: true, name: true }
+                });
+                // Generate basic analytics in parallel (limit concurrency)
+                const analyticsPromises = products.slice(0, 20).map(async (product) => {
+                    try {
+                        // Get sales history
+                        const sales = await schema_1.prisma.sales.findMany({
+                            where: { product_id: product.id, user_id: userIdStr },
+                            orderBy: { sale_date: 'desc' },
+                            take: 60
+                        });
+                        if (sales.length >= 3) {
+                            const salesData = sales.map(s => ({
+                                date: s.sale_date,
+                                quantity: Number(s.quantity),
+                                productName: product.name
+                            }));
+                            // Quick analysis
+                            const analysis = await intelligenceService_1.intelligenceService.analyzeProduct(product.id, product.name, salesData);
+                            if (analysis && sales[0]) {
+                                await (0, queries_1.upsertAnalyticsResult)(userIdStr, uploadDatasetId, product.id, sales[0].sale_date, {
+                                    actualQty: Number(sales[0].quantity),
+                                    burstScore: analysis.realtime.burst.score,
+                                    burstLevel: analysis.realtime.burst.severity,
+                                    momentumCombined: analysis.realtime.momentum.combined,
+                                    momentumLabel: analysis.realtime.momentum.status,
+                                    aiInsight: { source: 'upload', method: analysis.forecast.method }
+                                });
+                            }
+                        }
+                    }
+                    catch (err) {
+                        console.error(`[Upload] Analytics error for ${product.name}:`, err);
+                    }
+                });
+                await Promise.all(analyticsPromises);
+                console.log(`[Upload] Sync done: ${rowCount} rows, ${products.length} products`);
+                return res.json({
+                    success: true,
+                    message: `Berhasil! ${rowCount} data diproses, ${products.length} produk diupdate.`,
+                    processed: rowCount,
+                    products: products.length
+                });
+            }
+            catch (err) {
+                console.error(`[Upload] Sync error:`, err);
+                return res.status(500).json({
+                    success: false,
+                    error: err instanceof Error ? err.message : "Gagal memproses file"
+                });
+            }
+        }
+        // For larger files, process in background
+        res.json({
+            success: true,
+            message: `Memproses ${rowCount} data di background (file besar). Refresh halaman dalam beberapa saat.`,
+            processed: rowCount
+        });
+        // Process in background (after response sent)
+        setImmediate(async () => {
+            try {
+                console.log(`[Upload] Background processing ${rowCount} rows for user ${userIdStr}`);
+                await (0, queries_1.bulkUpsertSales)(userIdStr, uploadDatasetId, rows);
+                // Generate analytics for first 20 products
+                const uniqueProducts = [...new Set(rows.map(r => r.productName))].slice(0, 20);
+                const products = await schema_1.prisma.products.findMany({
+                    where: { user_id: userIdStr, name: { in: uniqueProducts } },
+                    select: { id: true, name: true }
+                });
+                for (const product of products) {
+                    try {
+                        const sales = await schema_1.prisma.sales.findMany({
+                            where: { product_id: product.id, user_id: userIdStr },
+                            orderBy: { sale_date: 'desc' },
+                            take: 60
+                        });
+                        if (sales.length >= 3) {
+                            const salesData = sales.map(s => ({
+                                date: s.sale_date,
+                                quantity: Number(s.quantity),
+                                productName: product.name
+                            }));
+                            const analysis = await intelligenceService_1.intelligenceService.analyzeProduct(product.id, product.name, salesData);
+                            if (analysis && sales[0]) {
+                                await (0, queries_1.upsertAnalyticsResult)(userIdStr, uploadDatasetId, product.id, sales[0].sale_date, {
+                                    actualQty: Number(sales[0].quantity),
+                                    burstScore: analysis.realtime.burst.score,
+                                    burstLevel: analysis.realtime.burst.severity,
+                                    momentumCombined: analysis.realtime.momentum.combined,
+                                    momentumLabel: analysis.realtime.momentum.status,
+                                    aiInsight: { source: 'upload-bg', method: analysis.forecast.method }
+                                });
+                            }
+                        }
+                    }
+                    catch (err) {
+                        console.error(`[Upload BG] Analytics error:`, err);
+                    }
+                }
+                console.log(`[Upload] Background done: ${rowCount} rows`);
+            }
+            catch (err) {
+                console.error(`[Upload] Background error:`, err);
+            }
+        });
+    }
+    catch (error) {
+        console.error("[SalesController] Upload error:", error);
+        res.status(500).json({
+            success: false,
+            error: error instanceof Error ? error.message : "Gagal memproses file"
+        });
+    }
+};
+exports.uploadSalesFile = uploadSalesFile;
