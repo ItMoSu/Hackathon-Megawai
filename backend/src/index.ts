@@ -124,6 +124,12 @@ app.get('/health', (req, res) => {
 // Error handling middleware (must be last)
 app.use(errorLogger);
 
-app.listen(PORT, () => {
-  console.log(`Backend running on port ${PORT}`)
-})
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`Backend running on port ${PORT}`)
+  })
+}
+
+// Export for Vercel
+export default app;
