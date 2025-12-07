@@ -20,6 +20,9 @@ import { Button } from "./ui/Button";
 import { ProductIntelligence, ForecastPrediction } from "@/types/intelligence";
 import { OnboardingModal } from "./OnboardingModal";
 import { AlertCard } from "./AlertCard";
+import { API_URL } from "@/lib/api";
+import { getToken, handleAuthError, clearAuth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 type IntelligenceDashboardProps = {
   productId: string;
@@ -88,6 +91,8 @@ function friendlyConfidence(confidence: ProductIntelligence["confidence"]) {
   return { overall, pct };
 }
 
+type ForecastDays = 7 | 14 | 30;
+
 export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps) {
   const [intelligence, setIntelligence] = useState<ProductIntelligence | null>(null);
   const [loading, setLoading] = useState(false);
@@ -95,19 +100,20 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [alertDismissed, setAlertDismissed] = useState(false);
+  const [forecastDays, setForecastDays] = useState<ForecastDays>(7);
 
   const fetchData = async () => {
     if (!productId) return;
     setLoading(true);
     setError(null);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      const token = getToken();
       if (!token) {
         throw new Error("Token tidak ditemukan. Silakan login ulang.");
       }
 
       const res = await fetch(
-        `http://localhost:5000/api/intelligence/analyze/${productId}`,
+        `${API_URL}/api/intelligence/analyze/${productId}?days=${forecastDays}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -117,7 +123,11 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
       );
 
       if (res.status === 401 || res.status === 403) {
-        throw new Error("Session habis. Silakan login ulang.");
+        clearAuth();
+        if (typeof window !== 'undefined') {
+          window.location.href = '/';
+        }
+        return;
       }
 
       if (!res.ok) {
@@ -141,7 +151,7 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
       setIntelligence(data.data);
       setLastUpdated(new Date());
     } catch (err: any) {
-      console.error('IntelligenceDashboard fetch error:', err);
+      logger.error('IntelligenceDashboard fetch error:', err);
       setError(err?.message || "Gagal memuat intelijen produk");
       setIntelligence(null);
     } finally {
@@ -157,7 +167,7 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
     fetchData();
     const interval = setInterval(fetchData, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [productId]);
+  }, [productId, forecastDays]);
 
   const predictions = intelligence?.forecast?.predictions || [];
   const bandData = useMemo(() => buildBandData(predictions), [predictions]);
@@ -389,7 +399,24 @@ export function IntelligenceDashboard({ productId }: IntelligenceDashboardProps)
 
       <div className="bg-white rounded-xl shadow-md p-6">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-4">
-          <h3 className="text-xl font-bold text-gray-900">📊 Prediksi 7 Hari ke Depan</h3>
+          <div className="flex items-center gap-4">
+            <h3 className="text-xl font-bold text-gray-900">📊 Prediksi {forecastDays} Hari ke Depan</h3>
+            <div className="flex gap-1">
+              {([7, 14, 30] as ForecastDays[]).map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setForecastDays(d)}
+                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                    forecastDays === d
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {d}H
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="text-right">
             <p className="text-sm text-gray-600">Total Prediksi</p>
             <p className="text-2xl font-bold text-blue-600">{numberFormatter.format(totalPrediction)} porsi</p>

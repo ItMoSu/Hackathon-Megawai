@@ -10,7 +10,7 @@ const queries_1 = require("../../lib/database/queries");
 const schema_1 = require("../../lib/database/schema");
 const ML_API_URL = (process.env.ML_API_URL || 'http://localhost:8000').replace(/\/$/, '');
 const MIN_TRAINING_DAYS = 5; // ✅ LOWERED from 30 to 5 for faster testing
-const FORECAST_DAYS = 7;
+const DEFAULT_FORECAST_DAYS = 7;
 class IntelligenceService {
     normalizeSales(salesData) {
         return (salesData || [])
@@ -124,7 +124,8 @@ class IntelligenceService {
                 date: new Date(s.date).toISOString().split('T')[0],
                 quantity: Number(s.quantity)
             }));
-            const response = await axios_1.default.post(`${ML_API_URL}/api/ml/predict-universal`, { sales_data: salesData, forecast_days: days }, { timeout: 15000, headers: { 'Content-Type': 'application/json' } });
+            const response = await axios_1.default.post(`${ML_API_URL}/api/ml/predict-universal`, { sales_data: salesData, forecast_days: days }, { timeout: 45000, headers: { 'Content-Type': 'application/json' } } // 45s timeout untuk data besar
+            );
             if (response.data && response.data.success)
                 return response.data;
             return null;
@@ -144,8 +145,9 @@ class IntelligenceService {
         }
     }
     // ✅ MAIN ANALYSIS - USES UNIVERSAL ML
-    async analyzeProduct(productId, productName, salesData) {
+    async analyzeProduct(productId, productName, salesData, forecastDays = DEFAULT_FORECAST_DAYS) {
         const cleaned = this.normalizeSales(salesData);
+        const days = Math.min(30, Math.max(7, forecastDays));
         const momentum = this.calculateMomentum(cleaned);
         const burst = this.detectBurst(cleaned);
         const realtimeMetrics = {
@@ -155,7 +157,7 @@ class IntelligenceService {
             lastUpdated: new Date().toISOString(),
         };
         if (!cleaned.length || cleaned.length < MIN_TRAINING_DAYS) {
-            const rulePred = this.getRuleBasedPredictions(cleaned, FORECAST_DAYS);
+            const rulePred = this.getRuleBasedPredictions(cleaned, days);
             return {
                 productId, productName, realtime: realtimeMetrics,
                 forecast: {
@@ -172,7 +174,7 @@ class IntelligenceService {
         const mlAvailable = await this.isMLAvailable();
         if (!mlAvailable) {
             console.warn('[IntelligenceService] ML offline, using fallback');
-            const rulePred = this.getRuleBasedPredictions(cleaned, FORECAST_DAYS);
+            const rulePred = this.getRuleBasedPredictions(cleaned, days);
             return {
                 productId, productName, realtime: realtimeMetrics,
                 forecast: {
@@ -186,11 +188,11 @@ class IntelligenceService {
                 confidence: { overall: 'LOW', dataQuality: 0.5, modelAgreement: 0 }
             };
         }
-        // ✅ CALL UNIVERSAL ML
-        const aiResult = await this.callMLUniversalPredict(cleaned, FORECAST_DAYS);
+        // ✅ CALL UNIVERSAL ML with specified forecast days
+        const aiResult = await this.callMLUniversalPredict(cleaned, days);
         if (!aiResult || !aiResult.success) {
             console.warn('[IntelligenceService] ML failed, using fallback');
-            const rulePred = this.getRuleBasedPredictions(cleaned, FORECAST_DAYS);
+            const rulePred = this.getRuleBasedPredictions(cleaned, days);
             return {
                 productId, productName, realtime: realtimeMetrics,
                 forecast: {
@@ -206,7 +208,7 @@ class IntelligenceService {
         }
         // ✅ SUCCESS - ML WORKING
         const predictions = aiResult.predictions || [];
-        const total7d = predictions.reduce((sum, p) => sum + (p.predicted_quantity || 0), 0);
+        const totalPrediction = predictions.reduce((sum, p) => sum + (p.predicted_quantity || 0), 0);
         let trend = 'STABLE';
         if (predictions.length > 0) {
             const first = predictions[0].predicted_quantity;
@@ -217,13 +219,14 @@ class IntelligenceService {
                 trend = 'DECREASING';
         }
         const recommendations = [];
+        const avgPerDay = totalPrediction / days;
         if (momentum.status === 'TRENDING_UP' || momentum.status === 'GROWING') {
             recommendations.push({
                 type: 'STOCK_INCREASE', priority: 'HIGH',
                 message: `${productName} tren naik. Tambah stok 20-30%.`,
                 actionable: true,
                 action: `Tingkatkan stok ${productName}`,
-                details: [`Momentum: ${momentum.status}`, `Avg: ${(total7d / 7).toFixed(1)} unit/hari`]
+                details: [`Momentum: ${momentum.status}`, `Avg: ${avgPerDay.toFixed(1)} unit/hari`]
             });
         }
         else if (momentum.status === 'DECLINING' || momentum.status === 'FALLING') {
@@ -232,7 +235,7 @@ class IntelligenceService {
                 message: `${productName} tren turun. Kurangi stok 10-20%.`,
                 actionable: true,
                 action: `Kurangi stok ${productName}`,
-                details: [`Momentum: ${momentum.status}`, `Avg: ${(total7d / 7).toFixed(1)} unit/hari`]
+                details: [`Momentum: ${momentum.status}`, `Avg: ${avgPerDay.toFixed(1)} unit/hari`]
             });
         }
         if (burst.severity === 'HIGH' || burst.severity === 'CRITICAL') {
@@ -256,8 +259,8 @@ class IntelligenceService {
                     upper_bound: Math.round(p.upper_bound || p.predicted_quantity * 1.2)
                 })),
                 trend,
-                totalForecast7d: Math.round(total7d),
-                summary: `Prediksi ML universal (${cleaned.length} hari data).`
+                totalForecast7d: Math.round(totalPrediction),
+                summary: `Prediksi ML ${days} hari (${cleaned.length} hari data).`
             },
             recommendations,
             confidence: {

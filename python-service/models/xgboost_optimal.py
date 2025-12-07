@@ -666,13 +666,41 @@ class HybridBrain:
 
         predictions = []
         
+        # Determine data quality tier based on available data
+        data_days = len(self.dow_patterns) if self.dow_patterns else 0
+        if data_days >= 60:  # 2+ months - HIGH confidence
+            data_tier = 'HIGH'
+            variation_scale = 1.0      # Full pattern application
+            trend_sensitivity = 0.20   # Respond to trends
+            dow_clamp = (0.80, 1.25)   # Wider DOW range allowed
+        elif data_days >= 30:  # 1+ month - MEDIUM-HIGH
+            data_tier = 'MEDIUM_HIGH'
+            variation_scale = 0.8
+            trend_sensitivity = 0.15
+            dow_clamp = (0.85, 1.20)
+        elif data_days >= 14:  # 2+ weeks - MEDIUM
+            data_tier = 'MEDIUM'
+            variation_scale = 0.6
+            trend_sensitivity = 0.10
+            dow_clamp = (0.88, 1.15)
+        elif data_days >= 7:  # 1+ week - LOW-MEDIUM
+            data_tier = 'LOW_MEDIUM'
+            variation_scale = 0.4
+            trend_sensitivity = 0.05
+            dow_clamp = (0.92, 1.10)
+        else:  # < 7 days - LOW (conservative)
+            data_tier = 'LOW'
+            variation_scale = 0.2      # Minimal variation
+            trend_sensitivity = 0.02   # Almost ignore trends
+            dow_clamp = (0.95, 1.05)   # Very narrow range
+        
         if self.model is not None and self.is_trained_ml:
             weights = self.ensemble_weights or {"ml": 0.75, "rule": 0.25}
             ml_weight = weights.get("ml", 0.75)
-            confidence = 'HIGH' if ml_weight >= 0.7 else 'MEDIUM'
+            confidence = 'HIGH' if data_tier in ['HIGH', 'MEDIUM_HIGH'] else 'MEDIUM'
         else:
             ml_weight = 0.0
-            confidence = 'MEDIUM'
+            confidence = 'MEDIUM' if data_tier in ['HIGH', 'MEDIUM_HIGH', 'MEDIUM'] else 'LOW'
 
         momentum = self.physics_metrics.get('momentum', {}).get('combined', 0.0)
         trend_factor = 1.0 + (momentum * runtime_config.demand.trend_factor_scale)
@@ -681,11 +709,24 @@ class HybridBrain:
         base_date = pd.to_datetime(self.last_date) if self.last_date else pd.Timestamp.now()
         weekend_dows = set(runtime_config.calendar.weekend_dows)
 
+        # Default DOW multipliers (used when insufficient learned patterns)
+        dow_multipliers = {
+            0: 0.92,  # Monday
+            1: 0.96,  # Tuesday
+            2: 1.00,  # Wednesday
+            3: 1.02,  # Thursday
+            4: 1.10,  # Friday
+            5: 1.15,  # Saturday
+            6: 0.88,  # Sunday
+        }
+        
         for i in range(days):
             pred_date = base_date + pd.Timedelta(days=i + 1)
             features = self._prepare_feature_row(pred_date, current_row)
+            day_of_week = pred_date.dayofweek
+            day_of_month = pred_date.day
             
-            # ML prediction
+            # ML prediction (primary source if trained)
             ml_pred = features['roll_mean_7']
             if self.model is not None and self.is_trained_ml:
                 try:
@@ -694,32 +735,74 @@ class HybridBrain:
                 except Exception:
                     ml_pred = features['roll_mean_7']
             
-            # Rule-based prediction with trend
-            rule_base = 0.5 * features['lag_1'] + 0.3 * features['roll_mean_7'] + 0.2 * features['dow_avg']
+            # Rule-based prediction using historical patterns
+            dow_avg = self.dow_patterns.get(day_of_week, features['roll_mean_7']) if self.dow_patterns else features['roll_mean_7']
+            rule_base = 0.4 * features['lag_1'] + 0.35 * features['roll_mean_7'] + 0.25 * dow_avg
             rule_pred = max(0, rule_base * trend_factor)
             
-            # Ensemble
+            # Ensemble: weight ML more if trained, rules more if cold start
             final_pred = ml_weight * ml_pred + (1 - ml_weight) * rule_pred
             
-            # Lighter smoothing (allow more natural variation)
-            if predictions:
+            # Apply DOW pattern - use learned patterns if sufficient data, else defaults
+            if self.dow_patterns and day_of_week in self.dow_patterns and data_tier != 'LOW':
+                # Use learned DOW pattern scaled by data quality
+                learned_dow = self.dow_patterns[day_of_week]
+                avg_dow = sum(self.dow_patterns.values()) / len(self.dow_patterns) if self.dow_patterns else 1
+                if avg_dow > 0:
+                    raw_factor = learned_dow / avg_dow
+                    # Clamp based on data tier (more data = wider allowed range)
+                    dow_factor = max(dow_clamp[0], min(dow_clamp[1], raw_factor))
+                    # Scale the effect based on data quality
+                    dow_factor = 1.0 + (dow_factor - 1.0) * variation_scale
+                    final_pred = final_pred * dow_factor
+            else:
+                # Fallback to default multipliers (also scaled)
+                raw_mult = dow_multipliers.get(day_of_week, 1.0)
+                dow_mult = 1.0 + (raw_mult - 1.0) * variation_scale
+                final_pred = final_pred * dow_mult
+            
+            # Payday effect (scaled by data quality)
+            payday_boost = 1.08 * variation_scale  # Max 8% when full data
+            payday_dip = 0.05 * variation_scale    # Max 5% dip
+            if day_of_month >= 25 or day_of_month <= 5:
+                final_pred = final_pred * (1.0 + payday_boost - 1.0)
+            elif day_of_month >= 12 and day_of_month <= 18:
+                final_pred = final_pred * (1.0 - payday_dip)
+            
+            # Natural variation (scaled by data quality)
+            date_seed = (day_of_month * 3 + pred_date.month * 7 + day_of_week * 2) % 100
+            max_variation = 0.05 * variation_scale  # Max +/- 5% when full data
+            variation = 1.0 + ((date_seed - 50) / 100) * max_variation
+            final_pred = final_pred * variation
+            
+            # Apply momentum trend (sensitivity based on data quality)
+            if abs(momentum) > 0.03:
+                trend_effect = 1.0 + (momentum * trend_sensitivity * (i + 1) / days)
+                final_pred = final_pred * trend_effect
+            
+            # Smooth transitions - stricter for low data, looser for high data
+            max_daily_change = 0.15 + (0.15 * variation_scale)  # 15-30% based on data
+            if predictions and len(predictions) > 0:
                 prev = predictions[-1]['predicted_quantity']
-                # Allow up to 50% change per day for more dynamic predictions
-                max_change = max(prev * 0.5, 1.0)
-                final_pred = max(prev - max_change, min(prev + max_change, final_pred))
+                if prev > 0:
+                    change_ratio = final_pred / prev
+                    if change_ratio > (1 + max_daily_change):
+                        final_pred = prev * (1 + max_daily_change * 0.8)
+                    elif change_ratio < (1 - max_daily_change):
+                        final_pred = prev * (1 - max_daily_change * 0.8)
 
             # Integer output, minimum 1
-            final_pred = max(1, round(final_pred))
+            final_pred = int(max(1, round(final_pred)))
 
             uncertainty = runtime_config.demand.forecast_uncertainty_z * self.std_error
             predictions.append({
                 'date': pred_date.strftime('%Y-%m-%d'),
-                'predicted_quantity': final_pred,  # Already integer from above
-                'lower_bound': max(0, round(final_pred - uncertainty)),
-                'upper_bound': round(final_pred + uncertainty),
+                'predicted_quantity': final_pred,
+                'lower_bound': int(max(0, round(final_pred - uncertainty))),
+                'upper_bound': int(round(final_pred + uncertainty)),
                 'confidence': confidence,
-                'day_of_week': pred_date.dayofweek,
-                'is_weekend': pred_date.dayofweek in weekend_dows
+                'day_of_week': day_of_week,
+                'is_weekend': day_of_week in weekend_dows
             })
             
             # Update for next iteration

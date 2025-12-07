@@ -14,6 +14,7 @@ router.get('/analyze/:productId', async (req, res) => {
   try {
     const { productId } = req.params;
     const userId = req.user?.sub;
+    const forecastDays = Math.min(30, Math.max(7, Number(req.query.days) || 7));
 
     if (!userId) {
       return res.status(401).json({
@@ -64,7 +65,8 @@ router.get('/analyze/:productId', async (req, res) => {
     const intelligence = await intelligenceService.analyzeProduct(
       product.id,
       product.name,
-      salesData
+      salesData,
+      forecastDays
     );
 
     // Return in format expected by frontend

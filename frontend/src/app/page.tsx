@@ -15,7 +15,7 @@ const FeaturesSection = nextDynamic(
 
 // SEO Metadata - Static Generation
 export const metadata: Metadata = {
-  title: "MEGAWAI - AI Sales Intelligence untuk UMKM Indonesia",
+  title: "Megaw AI - AI Sales Intelligence untuk UMKM Indonesia",
   description:
     "Platform AI untuk prediksi penjualan, analisis tren, dan rekomendasi bisnis cerdas. Tingkatkan omzet UMKM dengan teknologi Machine Learning.",
   keywords: [
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     "machine learning Indonesia",
   ],
   openGraph: {
-    title: "MEGAWAI - AI Sales Intelligence untuk UMKM",
+    title: "Megaw AI - AI Sales Intelligence untuk UMKM",
     description:
       "Platform AI untuk prediksi penjualan dan analisis bisnis cerdas",
     type: "website",
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  name: "MEGAWAI",
+  name: "Megaw AI",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   description:
@@ -78,7 +78,7 @@ export default function HomePage() {
 
         <footer className="py-8 bg-white border-t border-gray-100 text-center">
           <p className="text-gray-500">
-            © {new Date().getFullYear()} MEGAWAI. All rights reserved.
+            © {new Date().getFullYear()} Megaw AI. All rights reserved.
           </p>
         </footer>
       </main>

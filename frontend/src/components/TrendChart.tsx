@@ -13,6 +13,7 @@ import {
 import { format, parseISO } from "date-fns";
 import { Card, CardContent, CardHeader } from "./ui/Card";
 import { Select } from "./ui/Select";
+import { API_URL } from "@/lib/api";
 
 type TimeRange = "7d" | "14d" | "30d" | "60d" | "90d";
 
@@ -54,7 +55,7 @@ export function TrendChart() {
       try {
         setLoadingProducts(true);
         const token = localStorage.getItem("token");
-        const res = await fetch("http://localhost:5000/api/products", {
+        const res = await fetch(`${API_URL}/api/products`, {
           headers: {
             "Content-Type": "application/json",
             Authorization: token ? `Bearer ${token}` : "",
@@ -91,7 +92,7 @@ export function TrendChart() {
         }
 
         const res = await fetch(
-          `http://localhost:5000/api/products/trend?${params.toString()}`,
+          `${API_URL}/api/products/trend?${params.toString()}`,
           {
             headers: {
               "Content-Type": "application/json",

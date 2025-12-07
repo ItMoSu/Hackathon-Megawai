@@ -2,11 +2,14 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Navbar from "@/components/ui/Navbar"; 
+import Navbar from "@/components/ui/Navbar";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { FolderOpen, Calendar, Package, Save, CheckCircle, AlertCircle, Minus, Plus, Upload, FileSpreadsheet, Info, History, Loader2 } from "lucide-react"; 
+import { FolderOpen, Calendar, Package, Save, CheckCircle, AlertCircle, Minus, Plus, Upload, FileSpreadsheet, Info, History, Loader2 } from "lucide-react";
+import { API_URL } from "@/lib/api";
+import { getToken, getAuthHeaders, requireAuth } from "@/lib/auth";
+import { logger } from "@/lib/logger"; 
 
 interface Product {
   id: string;
@@ -44,14 +47,6 @@ export default function InputPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem("token");
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    };
-  };
-
   useEffect(() => {
     setIsMounted(true);
     setSaleDate(getTodayDate());
@@ -63,14 +58,10 @@ export default function InputPage() {
     const fetchProducts = async () => {
       setIsLoading(true);
       try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          router.push('/login');
-          return;
-        }
+        if (!requireAuth(router)) return;
 
-        const res = await fetch("http://localhost:5000/api/products", {
-          headers: { Authorization: `Bearer ${token}` }
+        const res = await fetch(`${API_URL}/api/products`, {
+          headers: getAuthHeaders()
         });
         const result = await res.json();
         
@@ -84,23 +75,22 @@ export default function InputPage() {
           setEntries(initial);
         }
       } catch (err) {
-        console.error("Gagal load produk", err);
+        logger.error("Gagal load produk", err);
       } finally {
         setIsLoading(false);
       }
     };
 
-    // Parallel fetch for faster loading
     Promise.all([fetchProducts(), fetchSalesHistory()]);
   }, [isMounted, router]); 
 
   const fetchSalesHistory = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) return;
 
-      const res = await fetch("http://localhost:5000/api/sales/history?limit=20", {
-        headers: { Authorization: `Bearer ${token}` }
+      const res = await fetch(`${API_URL}/api/sales/history?limit=20`, {
+        headers: getAuthHeaders()
       });
       const result = await res.json();
       
@@ -108,7 +98,7 @@ export default function InputPage() {
         setSalesHistory(result.data);
       }
     } catch (err) {
-      console.error("Gagal load history", err);
+      logger.error("Gagal load history", err);
     }
   };
 
@@ -128,29 +118,39 @@ export default function InputPage() {
       return;
     }
 
+    // Check file size - warn for large files
+    const fileSizeMB = file.size / (1024 * 1024);
+    if (fileSizeMB > 10) {
+      const confirm = window.confirm(`File berukuran ${fileSizeMB.toFixed(1)}MB. File besar akan membutuhkan waktu lebih lama. Lanjutkan?`);
+      if (!confirm) return;
+    }
+
     setIsUploading(true);
     setUploadProgress(0);
-    setMessage(null);
+    setMessage({ type: 'success', text: 'Mengupload file...' });
 
-    // Faster progress simulation
+    // Progress simulation based on file size
+    const estimatedTime = Math.max(5000, fileSizeMB * 3000); // ~3s per MB
+    const increment = Math.max(1, Math.round(90 / (estimatedTime / 200)));
     const progressInterval = setInterval(() => {
       setUploadProgress(prev => {
-        if (prev >= 95) return prev;
-        return prev + 5;
+        if (prev >= 90) return 90;
+        return Math.min(90, prev + increment);
       });
-    }, 100);
+    }, 200);
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const formData = new FormData();
       formData.append('file', file);
       formData.append('sale_date', saleDate);
 
-      // Add timeout with AbortController
+      // Extended timeout for large files - 5 minutes
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      const timeoutMs = Math.max(300000, fileSizeMB * 30000); // Min 5min or 30s per MB
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-      const res = await fetch("http://localhost:5000/api/sales/upload", {
+      const res = await fetch(`${API_URL}/api/sales/upload`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -159,22 +159,24 @@ export default function InputPage() {
 
       clearTimeout(timeoutId);
       clearInterval(progressInterval);
-      setUploadProgress(100);
+      setUploadProgress(95);
 
       const result = await res.json();
+      setUploadProgress(100);
 
       if (result.success) {
-        setMessage({ type: 'success', text: `Berhasil! ${result.processed || 0} data diproses.` });
-        fetchSalesHistory();
+        setMessage({ type: 'success', text: `Berhasil! ${result.processed || 0} data diproses dalam background.` });
+        // Delay refresh to let background processing complete
+        setTimeout(() => fetchSalesHistory(), 2000);
       } else {
         setMessage({ type: 'error', text: result.error || 'Gagal upload file' });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       clearInterval(progressInterval);
-      if (err.name === 'AbortError') {
-        setMessage({ type: 'error', text: 'Upload timeout - file terlalu besar atau server sibuk' });
+      if (err instanceof Error && err.name === 'AbortError') {
+        setMessage({ type: 'error', text: 'Upload timeout - coba lagi atau pecah file menjadi bagian lebih kecil' });
       } else {
-        setMessage({ type: 'error', text: err.message || 'Gagal upload file' });
+        setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Gagal upload file' });
       }
     } finally {
       setIsUploading(false);
@@ -235,7 +237,7 @@ export default function InputPage() {
     setMessage(null);
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         setMessage({ type: 'error', text: 'Session habis. Login ulang!' });
         setIsSubmitting(false);
@@ -273,7 +275,7 @@ export default function InputPage() {
         }
       }
 
-      const res = await fetch("http://localhost:5000/api/sales/bulk", {
+      const res = await fetch(`${API_URL}/api/sales/bulk`, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -331,6 +333,21 @@ export default function InputPage() {
           </div>
         </div>
 
+        {/* Warning Banner - Daftar produk dulu */}
+        <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-amber-800 font-medium text-sm">Penting: Daftarkan Produk Terlebih Dahulu</p>
+            <p className="text-amber-700 text-sm mt-1">
+              Sebelum input data penjualan, pastikan semua produk sudah didaftarkan di{' '}
+              <a href="/products" className="underline font-medium hover:text-amber-900">
+                halaman Products
+              </a>
+              . Data penjualan hanya akan diproses untuk produk yang sudah terdaftar.
+            </p>
+          </div>
+        </div>
+
         {/* Info Banner - 30 hari untuk AI */}
         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-3">
           <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
@@ -351,6 +368,9 @@ export default function InputPage() {
                 <div>
                   <p className="font-medium text-gray-900">Upload Data Penjualan</p>
                   <p className="text-gray-500 text-sm">Excel (.xlsx), CSV, atau Word (.docx)</p>
+                  <p className="text-gray-400 text-xs mt-1">
+                    Kolom fleksibel: tanggal/date/tgl, nama/produk/menu, qty/jumlah/terjual, harga/price
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -370,7 +390,7 @@ export default function InputPage() {
                   {isUploading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Uploading... {uploadProgress}%
+                      Uploading... {Math.round(uploadProgress)}%
                     </>
                   ) : (
                     <>

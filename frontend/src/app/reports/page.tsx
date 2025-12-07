@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { AlertTriangle, Trophy, Calendar, TrendingUp, TrendingDown, DollarSign, Package, Lightbulb, BarChart3, ArrowUpRight, ArrowDownRight, Minus, RefreshCcw } from 'lucide-react';
-import { fetchWithAuth } from '@/lib/api';
+import { fetchWithAuth, API_URL } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import Navbar from '@/components/ui/Navbar';
 
 interface ReportData {
@@ -59,7 +60,7 @@ export default function ReportsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetchWithAuth('http://localhost:5000/api/reports/weekly');
+      const res = await fetchWithAuth(`${API_URL}/api/reports/weekly`);
       const data = await res.json();
       if (data.success) {
         setReport(data.data);
@@ -67,7 +68,7 @@ export default function ReportsPage() {
         setError(data.error || 'Gagal memuat data');
       }
     } catch (err) {
-      console.error(err);
+      logger.error('Reports fetch error:', err);
       setError('Gagal menghubungi server');
     } finally {
       setLoading(false);

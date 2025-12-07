@@ -8,20 +8,40 @@ import reportRoutes from './routes/reportRoutes';
 import intelligenceRoutes from './routes/intelligenceRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
 import { optionalAuth } from '../lib/auth/middleware';
+import { requestLogger, errorLogger } from './middleware/logger';
 
 dotenv.config()
 
 const app = express()
 const PORT = process.env.PORT || 5000
 
+// CORS configuration
+const allowedOrigins = process.env.FRONTEND_URL 
+  ? [process.env.FRONTEND_URL.replace(/\/$/, '')]
+  : ['http://localhost:3000'];
+
 app.use(cors({
-  origin: true, 
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, Postman, etc)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+    return callback(null, true); // Allow all in dev, restrict in prod
+  },
   credentials: true, 
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-app.use(express.json());
+// Body parser with size limit
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Request logging
+app.use(requestLogger);
+
+// Auth middleware
 app.use(optionalAuth); 
 
 app.use('/api/auth', authRoutes);
@@ -40,6 +60,9 @@ app.get('/health', (req, res) => {
   })
 })
 
+// Error handling middleware (must be last)
+app.use(errorLogger);
+
 app.listen(PORT, () => {
-  console.log(`🚀 Backend running on http://localhost:${PORT}`)
+  console.log(`Backend running on port ${PORT}`)
 })

@@ -1,12 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { IntelligenceDashboard } from "@/components/IntelligenceDashboard";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card"; // Pastikan ada CardTitle
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import Navbar from '@/components/ui/Navbar';
-import { ArrowUpRight, ArrowDownRight, AlertTriangle, TrendingUp } from "lucide-react"; // Install lucide-react jika belum
+import { ArrowUpRight, ArrowDownRight, AlertTriangle, TrendingUp, RefreshCcw } from "lucide-react";
+import { API_URL } from "@/lib/api";
+import { getToken } from "@/lib/auth";
+import { logger } from "@/lib/logger";
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08 }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.3 } }
+};
 
 // --- Tipe Data Sesuai Response API [1] ---
 type DashboardSummary = {
@@ -40,31 +57,27 @@ export default function DashboardPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // 1. Fetch List Produk (Untuk Sidebar Kiri)
   const fetchProducts = async () => {
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      const res = await fetch("http://localhost:5000/api/products", {
+      const token = getToken();
+      const res = await fetch(`${API_URL}/api/products`, {
         headers: { Authorization: token ? `Bearer ${token}` : "" },
       });
       const data = await res.json();
       if (data.success) {
         setProducts(data.data || []);
-        // Auto-select produk pertama jika belum ada yang dipilih
         if (!selectedId && data.data?.length > 0) setSelectedId(data.data[0].id);
       }
     } catch (err) {
-      console.error("Gagal load produk:", err);
+      logger.error("Gagal load produk:", err);
     }
   };
 
-  // 2. Fetch Summary (API [1] - INI KUNCINYA)
   const fetchSummary = async () => {
     setLoading(true);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      // KITA GUNAKAN ENDPOINT SUMMARY KARENA DATANYA LENGKAP
-      const res = await fetch("http://localhost:5000/api/analytics/summary", {
+      const token = getToken();
+      const res = await fetch(`${API_URL}/api/analytics/summary`, {
         headers: { Authorization: token ? `Bearer ${token}` : "" },
       });
       const data = await res.json();
@@ -73,7 +86,7 @@ export default function DashboardPage() {
         setSummary(data.summary);
       }
     } catch (err) {
-      console.error("Gagal load summary:", err);
+      logger.error("Gagal load summary:", err);
     } finally {
       setLoading(false);
     }
@@ -96,62 +109,85 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50 text-slate-900 selection:bg-red-600 selection:text-white">
       <Navbar />
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <motion.main 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"
+      >
         <div className="flex flex-col gap-8">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+          >
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-gray-900">Dashboard Overview</h1>
               <p className="text-sm text-gray-500 mt-1">
                 Pantau performa harian & deteksi anomali penjualan.
               </p>
             </div>
-            <Button onClick={fetchSummary} variant="outline" size="sm" className="bg-white shadow-sm">
-              Refresh Data
-            </Button>
-          </div>
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Button onClick={fetchSummary} variant="outline" size="sm" className="bg-white shadow-sm flex items-center gap-2">
+                <RefreshCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </motion.div>
+          </motion.div>
 
           {/* --- KPI SUMMARY CARDS --- */}
           {summary && (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Pendapatan</CardTitle>
-                  <span className="text-gray-500 font-bold text-xs">IDR</span>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{formatRupiah(summary.today.total_revenue)}</div>
-                  <p className={`text-xs flex items-center mt-1 font-medium ${summary.changes.revenue_change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {summary.changes.revenue_change >= 0 ? <ArrowUpRight className="h-4 w-4 mr-1" /> : <ArrowDownRight className="h-4 w-4 mr-1" />}
-                    {Math.abs(summary.changes.revenue_change).toFixed(1)}% dari kemarin
-                  </p>
-                </CardContent>
-              </Card>
+            <motion.div 
+              variants={containerVariants}
+              initial="hidden"
+              animate="show"
+              className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+            >
+              <motion.div variants={itemVariants}>
+                <Card className="hover:shadow-md transition-shadow">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Pendapatan</CardTitle>
+                    <span className="text-gray-500 font-bold text-xs">IDR</span>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{formatRupiah(summary.today.total_revenue)}</div>
+                    <p className={`text-xs flex items-center mt-1 font-medium ${summary.changes.revenue_change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {summary.changes.revenue_change >= 0 ? <ArrowUpRight className="h-4 w-4 mr-1" /> : <ArrowDownRight className="h-4 w-4 mr-1" />}
+                      {Math.abs(summary.changes.revenue_change).toFixed(1)}% dari kemarin
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Item Terjual</CardTitle>
-                  <span className="text-gray-500 font-bold text-xs">QTY</span>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{summary.today.total_quantity} pcs</div>
-                  <p className={`text-xs flex items-center mt-1 font-medium ${summary.changes.quantity_change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {summary.changes.quantity_change >= 0 ? <ArrowUpRight className="h-4 w-4 mr-1" /> : <ArrowDownRight className="h-4 w-4 mr-1" />}
-                    {Math.abs(summary.changes.quantity_change).toFixed(1)}% dari kemarin
-                  </p>
-                </CardContent>
-              </Card>
+              <motion.div variants={itemVariants}>
+                <Card className="hover:shadow-md transition-shadow">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Item Terjual</CardTitle>
+                    <span className="text-gray-500 font-bold text-xs">QTY</span>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{summary.today.total_quantity} pcs</div>
+                    <p className={`text-xs flex items-center mt-1 font-medium ${summary.changes.quantity_change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {summary.changes.quantity_change >= 0 ? <ArrowUpRight className="h-4 w-4 mr-1" /> : <ArrowDownRight className="h-4 w-4 mr-1" />}
+                      {Math.abs(summary.changes.quantity_change).toFixed(1)}% dari kemarin
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Transaksi</CardTitle>
-                  <span className="text-gray-500 font-bold text-xs">TRX</span>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{summary.today.sales_count}</div>
-                  <p className="text-xs text-gray-500 mt-1">Transaksi berhasil hari ini</p>
-                </CardContent>
-              </Card>
-            </div>
+              <motion.div variants={itemVariants}>
+                <Card className="hover:shadow-md transition-shadow">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Transaksi</CardTitle>
+                    <span className="text-gray-500 font-bold text-xs">TRX</span>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{summary.today.sales_count}</div>
+                    <p className="text-xs text-gray-500 mt-1">Transaksi berhasil hari ini</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </motion.div>
           )}
 
           {/* --- BURST ALERT SECTION --- */}
@@ -183,27 +219,34 @@ export default function DashboardPage() {
           )}
 
           {/* --- MAIN CONTENT GRID (SIDEBAR + CHART) --- */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
-            
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start"
+          >
             {/* Sidebar List Produk */}
             <Card className="lg:col-span-2 lg:sticky lg:top-6 shadow-sm">
               <CardHeader className="pb-3 border-b border-gray-100">
-                <h3 className="text-base font-semibold text-gray-900">List Produk</h3>
+                <h3 className="text-base font-semibold text-gray-900">Daftar Produk</h3>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="max-h-[600px] overflow-y-auto p-2 space-y-1">
-                  {products.map((p) => (
-                    <button
+                  {products.map((p, idx) => (
+                    <motion.button
                       key={p.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.03 }}
                       onClick={() => setSelectedId(p.id)}
-                      className={`w-full text-left px-2 py-2 rounded-md text-sm transition-all duration-150 truncate ${
+                      className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all duration-150 truncate ${
                         selectedId === p.id
-                          ? "bg-red-50 text-red-700 font-medium border border-red-200"
+                          ? "bg-red-50 text-red-700 font-medium border border-red-200 shadow-sm"
                           : "hover:bg-gray-100 text-gray-600 hover:text-gray-900"
                       }`}
                     >
                       {p.name}
-                    </button>
+                    </motion.button>
                   ))}
                 </div>
               </CardContent>
@@ -211,21 +254,37 @@ export default function DashboardPage() {
 
             {/* Intelligence Dashboard View */}
             <div className="lg:col-span-10">
-              {selectedId ? (
-                <IntelligenceDashboard productId={selectedId} />
-              ) : (
-                <div className="flex h-[400px] items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 text-center">
-                  <div className="flex flex-col items-center">
-                    <TrendingUp className="h-10 w-10 text-gray-300 mb-3" />
-                    <h3 className="text-lg font-medium text-gray-900">Belum ada produk dipilih</h3>
-                    <p className="text-sm text-gray-500">Pilih produk dari sidebar untuk melihat detail analisa.</p>
-                  </div>
-                </div>
-              )}
+              <AnimatePresence mode="wait">
+                {selectedId ? (
+                  <motion.div
+                    key={selectedId}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <IntelligenceDashboard productId={selectedId} />
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex h-[400px] items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50 text-center"
+                  >
+                    <div className="flex flex-col items-center">
+                      <div className="p-4 bg-white rounded-full shadow-sm mb-4">
+                        <TrendingUp className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900">Pilih Produk</h3>
+                      <p className="text-sm text-gray-500 mt-1">Klik produk dari sidebar untuk melihat analisa.</p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-          </div>
+          </motion.div>
         </div>
-      </main>
+      </motion.main>
     </div>
   );
 }
