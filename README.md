@@ -8,7 +8,7 @@ Hackathon project with full-stack implementation using modern web technologies a
 ![Contributors](https://img.shields.io/github/contributors/Okiled/-IMPHNEN-HEKATON)
 ![Languages](https://img.shields.io/github/languages/count/Okiled/-IMPHNEN-HEKATON)
 ![TypeScript](https://img.shields.io/badge/TypeScript-65.7%25-blue)
-![Python](https://img.shields.io/badge/Python-34.1%25-yellow)
+![Python](https://img.shields.io/badge/Python-34.%25-yellow)
 
 ## 👥 Contributors
 
@@ -18,6 +18,32 @@ Thanks to these amazing people:
 - [@ndhika](https://github.com/ndhika)
 - [@ItMoSu](https://github.com/ItMoSu)
 - [@rizyoff](https://github.com/rizyoff)
+
+## 📸 Screenshots
+
+### 🏠 Beranda (Landing Page)
+![Beranda](docs/screenshots/landing-page.png)
+*Welcome page dengan overview sistem MEGAWAI*
+
+### 📦 Produk
+![Produk](docs/screenshots/produk.png)
+*Halaman manajemen produk dan inventory*
+
+### 📊 Dashboard
+![Dashboard](docs/screenshots/dashboard.png)
+*Dashboard analytics dengan visualisasi data real-time*
+
+### ✏️ Input Data
+![Input Data](docs/screenshots/input-data.png)
+*Form input data produk dan transaksi*
+
+### 📈 Laporan
+![Laporan](docs/screenshots/laporan.png)
+*Laporan lengkap dengan prediksi menggunakan XGBoost model*
+
+### 🤖 ML Features Integration
+![ML Integration](docs/screenshots/ml-integration.png)
+*XGBoost models terintegrasi di fitur Laporan untuk prediksi inventory, profit analysis, dan weekly report ranking*
 
 ## 🛠️ Tech Stack
 
