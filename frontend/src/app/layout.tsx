@@ -1,18 +1,16 @@
-import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata } from "next";
+import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { SWRProvider } from "@/lib/swr-config";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
   subsets: ["latin"],
-  display: "swap",
+  variable: "--font-inter",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
-  display: "swap",
+  variable: "--font-space-grotesk",
 });
 
 const siteConfig = {
@@ -33,69 +31,10 @@ const siteConfig = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL(siteConfig.url),
-  title: {
-    default: `${siteConfig.name} - AI Sales Intelligence UMKM`,
-    template: `%s | ${siteConfig.name}`,
-  },
-  description: siteConfig.description,
-  keywords: siteConfig.keywords,
-  authors: [{ name: "Megaw AI Team" }],
-  creator: "Megaw AI",
-  publisher: "Megaw AI",
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-    },
-  },
-  openGraph: {
-    type: "website",
-    locale: "id_ID",
-    url: siteConfig.url,
-    title: siteConfig.name,
-    description: siteConfig.description,
-    siteName: siteConfig.name,
-    images: [
-      {
-        url: siteConfig.ogImage,
-        width: 1200,
-        height: 630,
-        alt: `${siteConfig.name} - AI Sales Intelligence`,
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: siteConfig.name,
-    description: siteConfig.description,
-    images: [siteConfig.ogImage],
-    creator: "@megaw_ai",
-  },
-  icons: {
-    icon: "/favicon.ico",
-    shortcut: "/favicon-16x16.png",
-    apple: "/apple-touch-icon.png",
-  },
-  manifest: "/site.webmanifest",
-  alternates: {
-    canonical: siteConfig.url,
-  },
-};
-
-export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
-  ],
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 5,
+  title: "Market Pulse - AI-Powered Sales Analytics",
+  description: "Platform analisis penjualan berbasis AI untuk UMKM. Pantau performa, prediksi tren, dan optimalkan bisnis Anda.",
+  keywords: ["sales analytics", "UMKM", "AI", "business intelligence", "forecasting"],
+  authors: [{ name: "Market Pulse Team" }],
 };
 
 export default function RootLayout({
@@ -104,15 +43,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background`}
-      >
-        <SWRProvider>{children}</SWRProvider>
+    <html lang="id">
+      <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans antialiased`}>
+        {children}
       </body>
     </html>
   );
