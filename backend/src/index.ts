@@ -1,5 +1,5 @@
-import express from 'express'
-import dotenv from 'dotenv'
+import 'dotenv/config'; // Load env vars before anything else
+import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -11,8 +11,6 @@ import intelligenceRoutes from './routes/intelligenceRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
 import { optionalAuth } from '../lib/auth/middleware';
 import { requestLogger, errorLogger } from './middleware/logger';
-
-dotenv.config()
 
 const app = express()
 const PORT = process.env.PORT || 5000

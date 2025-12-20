@@ -97,9 +97,10 @@ export default function AuthPage() {
 
       const accessToken = data?.data?.access_token;
       const userId = data?.data?.user?.id;
+      const userEmail = data?.data?.user?.email;
 
       if (accessToken && userId) {
-        setAuth(accessToken, userId);
+        setAuth(accessToken, userId, userEmail);
       }
 
       router.push("/products");
@@ -140,9 +141,10 @@ export default function AuthPage() {
       // No verification needed - login directly
       const accessToken = data?.data?.access_token;
       const userId = data?.data?.user?.id;
+      const userEmail = data?.data?.user?.email;
 
       if (accessToken && userId) {
-        setAuth(accessToken, userId);
+        setAuth(accessToken, userId, userEmail);
         router.push("/products");
       }
     } catch (err: unknown) {

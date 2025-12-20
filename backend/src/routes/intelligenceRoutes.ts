@@ -49,17 +49,19 @@ router.get('/analyze/:productId', async (req, res) => {
         quantity: true
       },
       orderBy: {
-        sale_date: 'asc'
+        sale_date: 'desc' // grab the most recent data points first
       },
       take: 60
     });
 
     // Transform to SalesPoint format expected by intelligenceService
-    const salesData = salesHistory.map(s => ({
-      date: s.sale_date,
-      quantity: Number(s.quantity),
-      productName: product.name
-    }));
+    const salesData = salesHistory
+      .map(s => ({
+        date: s.sale_date,
+        quantity: Number(s.quantity),
+        productName: product.name
+      }))
+      .reverse(); // restore chronological order for analysis
 
     // Call intelligence service to analyze product
     const intelligence = await intelligenceService.analyzeProduct(

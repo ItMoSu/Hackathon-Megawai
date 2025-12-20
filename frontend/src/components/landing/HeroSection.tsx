@@ -1,12 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowRight, TrendingUp, Zap, ShieldCheck, BarChart3, Brain, Clock } from "lucide-react";
 import { useTheme } from "@/lib/theme-context";
+import { getToken } from "@/lib/auth";
 
 export function HeroSection() {
   const { theme } = useTheme();
+  const router = useRouter();
+
+  const handleDashboardClick = () => {
+    const token = getToken();
+    router.push(token ? "/dashboard" : "/login");
+  };
   
   return (
     <section 
@@ -90,19 +98,18 @@ export function HeroSection() {
             </motion.button>
           </Link>
 
-          <Link href="/login">
-            <motion.button 
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.98 }}
-              className={`px-8 py-4 border-2 rounded-full font-bold text-lg transition-all ${
-                theme === "dark" 
-                  ? "bg-gray-800 text-gray-200 border-gray-700 hover:border-gray-500 hover:bg-gray-700" 
-                  : "bg-white text-gray-800 border-gray-200 hover:border-gray-400 hover:bg-gray-50"
-              }`}
-            >
-              Lihat Dashboard
-            </motion.button>
-          </Link>
+          <motion.button 
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleDashboardClick}
+            className={`px-8 py-4 border-2 rounded-full font-bold text-lg transition-all ${
+              theme === "dark" 
+                ? "bg-gray-800 text-gray-200 border-gray-700 hover:border-gray-500 hover:bg-gray-700" 
+                : "bg-white text-gray-800 border-gray-200 hover:border-gray-400 hover:bg-gray-50"
+            }`}
+          >
+            Lihat Dashboard
+          </motion.button>
         </motion.nav>
 
         {/* Stats Row */}

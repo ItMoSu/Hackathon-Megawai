@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, ShoppingBag, User, LogOut, Sun, Moon } from "lucide-react";
+import { getToken, getUserName, clearAuth, ensureDisplayName } from "@/lib/auth";
 import { useTheme } from "@/lib/theme-context";
 
 const navLinks = [
@@ -22,6 +23,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [userName, setUserName] = useState<string | null>(null);
 
   const pathname = usePathname();
   const router = useRouter();
@@ -30,12 +32,14 @@ export default function Navbar() {
   const shouldAnimate = !hasAnimated && pathname === "/";
 
 useEffect(() => {
-  const timer = setTimeout(() => {
-    setIsMounted(true);
-    
-    const token = localStorage.getItem("token");
-    setIsLoggedIn(!!token);
-  }, 0);
+    const timer = setTimeout(() => {
+      setIsMounted(true);
+      
+      const token = getToken();
+      setIsLoggedIn(!!token);
+      const storedName = getUserName() || ensureDisplayName();
+      if (storedName) setUserName(storedName);
+    }, 0);
 
   hasAnimated = true; 
 
@@ -50,6 +54,8 @@ useEffect(() => {
     window.removeEventListener("scroll", handleScroll);
   };
 }, []);
+
+  const displayName = userName || "Pengguna";
 
   return (
     <>
@@ -86,17 +92,20 @@ useEffect(() => {
                 <Link
                   key={link.name}
                   href={link.href}
-                  className={`relative text-sm font-medium transition-colors ${
-                    theme === "dark" 
-                      ? "text-gray-300 hover:text-[#DC2626]" 
-                      : "text-black/70 hover:text-[#DC2626]"
+                  className={`relative text-sm font-medium transition-colors pb-1 ${
+                    pathname === link.href
+                      ? "text-[#DC2626]"
+                      : theme === "dark" 
+                        ? "text-gray-300 hover:text-[#DC2626]" 
+                        : "text-black/70 hover:text-[#DC2626]"
                   }`}
                 >
                   {link.name}
                   {pathname === link.href && (
                     <motion.div
-                      layoutId="underline"
-                      className="absolute left-0 top-full mt-1 w-full h-0.5 bg-[#DC2626]"
+                      layoutId="navbar-underline"
+                      className="absolute left-0 bottom-0 w-full h-0.5 bg-[#DC2626] rounded-full"
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
                     />
                   )}
                 </Link>
@@ -126,7 +135,7 @@ useEffect(() => {
                 <div className="flex items-center gap-4">
                     <div className={`flex items-center gap-2 pr-4 border-r ${theme === "dark" ? "border-gray-700" : "border-gray-300"}`}>
                         <div className="text-right hidden lg:block">
-                            <p className={`text-sm font-bold leading-none ${theme === "dark" ? "text-gray-200" : "text-gray-800"}`}>Pengguna</p>
+                            <p className={`text-sm font-bold leading-none ${theme === "dark" ? "text-gray-200" : "text-gray-800"}`}>{displayName}</p>
                             <p className={`text-[10px] ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>UMKM</p>
                         </div>
                         <div className={`w-9 h-9 rounded-full flex items-center justify-center border cursor-pointer transition ${
@@ -139,9 +148,9 @@ useEffect(() => {
                     </div>
                     <button
                         onClick={() => {
-                          localStorage.removeItem("token");
-                          localStorage.removeItem("user_id");
+                          clearAuth();
                           setIsLoggedIn(false);
+                          setUserName(null);
                           router.push("/");
                         }}
                         className={`transition-colors ${theme === "dark" ? "text-gray-400 hover:text-[#DC2626]" : "text-gray-500 hover:text-[#DC2626]"}`} 
@@ -215,8 +224,8 @@ useEffect(() => {
                     className={`block px-3 py-3 rounded-md text-base font-medium ${
                       pathname === link.href
                         ? theme === "dark" 
-                          ? "bg-red-900/30 text-[#DC2626]" 
-                          : "bg-red-50 text-[#DC2626]"
+                          ? "bg-red-900/30 text-[#DC2626] border-l-4 border-[#DC2626]" 
+                          : "bg-red-50 text-[#DC2626] border-l-4 border-[#DC2626]"
                         : theme === "dark"
                           ? "text-gray-300 hover:bg-gray-800 hover:text-[#DC2626]"
                           : "text-gray-700 hover:bg-gray-50 hover:text-[#DC2626]"
@@ -240,7 +249,7 @@ useEffect(() => {
                           <User size={16} className={theme === "dark" ? "text-gray-300" : "text-gray-600"}/>
                         </div>
                         <div className="flex flex-col">
-                          <span className={`text-sm font-bold ${theme === "dark" ? "text-gray-200" : "text-gray-800"}`}>Pengguna UMKM</span>
+                          <span className={`text-sm font-bold ${theme === "dark" ? "text-gray-200" : "text-gray-800"}`}>{displayName} UMKM</span>
                         </div>
                       </div>
                       <button
