@@ -57,10 +57,18 @@ const uploadLimiter = rateLimit({
 
 app.use(generalLimiter);
 
-// CORS configuration - FIXED: Properly reject unauthorized origins
-const allowedOrigins = process.env.FRONTEND_URL
-  ? [process.env.FRONTEND_URL.replace(/\/$/, ''), 'http://localhost:3000']
-  : ['http://localhost:3000'];
+// CORS configuration - allow both http/https variants of FRONTEND_URL to avoid mismatched scheme
+const rawFrontend = process.env.FRONTEND_URL?.replace(/\/$/, '');
+const frontendOrigins = rawFrontend
+  ? Array.from(
+      new Set([
+        rawFrontend,
+        rawFrontend.replace(/^http:\/\//, 'https://'),
+        rawFrontend.replace(/^https:\/\//, 'http://'),
+      ]),
+    )
+  : [];
+const allowedOrigins = [...frontendOrigins, 'http://localhost:3000'];
 
 app.use(cors({
   origin: (origin, callback) => {
