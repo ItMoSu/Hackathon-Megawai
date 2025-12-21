@@ -3355,9 +3355,6 @@ var allowedOrigins = [...frontendOrigins, "http://localhost:3000"];
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) {
-      if (process.env.NODE_ENV === "production") {
-        return callback(new Error("Origin required in production"), false);
-      }
       return callback(null, true);
     }
     if (allowedOrigins.includes(origin)) {

@@ -72,11 +72,8 @@ const allowedOrigins = [...frontendOrigins, 'http://localhost:3000'];
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, Postman, curl, etc) in development only
+    // Allow requests with no origin (mobile apps, Postman, curl, health checks, direct browser access)
     if (!origin) {
-      if (process.env.NODE_ENV === 'production') {
-        return callback(new Error('Origin required in production'), false);
-      }
       return callback(null, true);
     }
 
