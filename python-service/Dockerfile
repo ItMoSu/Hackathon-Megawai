@@ -1,4 +1,4 @@
-# Lightweight Python base; 3.11 works with current deps (pandas 2.x, FastAPI, xgboost)
+# Lightweight Python base; 3.11 works with current deps
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -7,11 +7,12 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-# System deps: build tools + Java runtime for tabula-py (PDF) + libgomp for xgboost
+# System deps
+# PERUBAHAN DISINI: Mengganti 'openjdk-17-jre-headless' menjadi 'default-jre-headless'
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       build-essential \
-      openjdk-17-jre-headless \
+      default-jre-headless \
       libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -23,9 +24,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy source
 COPY . /app
 
-# Optional: relax permissions for environments like docker-compose
+# Optional: relax permissions
 RUN chmod -R 755 /app
 
 # Default command
 CMD ["python", "main.py"]
-
