@@ -1117,4 +1117,4 @@ def get_weekly_report(request: Request, product_id: Optional[str] = None):
 if __name__ == "__main__":
     import uvicorn
     logger.info(f"Starting server with BASE_DIR: {BASE_DIR}")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=7860)
