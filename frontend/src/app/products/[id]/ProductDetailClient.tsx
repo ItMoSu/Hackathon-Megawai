@@ -61,6 +61,8 @@ export default function ProductDetailClient({ productId }: Props) {
   const router = useRouter();
   const { theme } = useTheme();
 
+  const sanitizeNumericInput = (value: string) => value.replace(/[^\d]/g, "");
+
   const [data, setData] = useState<ProductDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -108,6 +110,18 @@ export default function ProductDetailClient({ productId }: Props) {
       fetchProductDetail();
     }
   }, [productId, fetchProductDetail]);
+
+  const handleEditPriceChange = (rawValue: string) => {
+    const sanitized = sanitizeNumericInput(rawValue);
+    setEditPrice(sanitized);
+  };
+
+  const blockNonNumericKeys = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const blockedKeys = ["-", "+", "e", "E"];
+    if (blockedKeys.includes(e.key)) {
+      e.preventDefault();
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -248,7 +262,12 @@ export default function ProductDetailClient({ productId }: Props) {
                       label="Harga"
                       type="number"
                       value={editPrice}
-                      onChange={(e) => setEditPrice(e.target.value)}
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      min="0"
+                      step={500}
+                      onChange={(e) => handleEditPriceChange(e.target.value)}
+                      onKeyDown={blockNonNumericKeys}
                     />
                     <div className="flex gap-2">
                       <Button onClick={handleSave} isLoading={saving} className="bg-green-600 hover:bg-green-700 text-white">

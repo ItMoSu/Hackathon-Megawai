@@ -24,6 +24,7 @@ export default function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [isMounted, setIsMounted] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
+  const [nameVariant, setNameVariant] = useState<"full" | "lg11" | "md4">("full");
 
   const pathname = usePathname();
   const router = useRouter();
@@ -55,7 +56,53 @@ useEffect(() => {
   };
 }, []);
 
+  // Responsive name variant:
+  // lg11: >=1024px (11-char trunc)
+  // md4: 768-1023px (4 words + ellipsis)
+  // full: <768px (mobile full name)
+  useEffect(() => {
+    const decideVariant = () => {
+      if (typeof window === "undefined") return;
+      if (window.innerWidth >= 1024) return setNameVariant("lg11");
+      if (window.innerWidth >= 768) return setNameVariant("md4");
+      return setNameVariant("full");
+    };
+    decideVariant();
+    window.addEventListener("resize", decideVariant, { passive: true });
+    return () => window.removeEventListener("resize", decideVariant);
+  }, []);
+
+  // Truncate to 11 characters total (including the ellipsis) for large
+  const truncate11Chars = (value: string) => {
+    const text = value.trim();
+    if (text.length <= 11) return text;
+    const front = 4;
+    const back = 11 - front - 3; // 4 + 3 dots + 4 = 11
+    return `${text.slice(0, front)}...${text.slice(-back)}`;
+  };
+
+  // For medium: show full if <=6 words, except very long single-token names are trimmed;
+  // otherwise 4 words then ellipsis.
+  const firstFourWordsEllipsis = (value: string) => {
+    const words = value.trim().split(/\s+/).filter(Boolean);
+    // If only one word but very long, trim by chars to avoid overflow
+    if (words.length === 1) {
+      const text = words[0];
+      if (text.length > 11) return `${text.slice(0, 4)}...`;
+      return text;
+    }
+
+    if (words.length <= 6) return words.join(" ");
+    return `${words.slice(0, 4).join(" ")} ...`;
+  };
+
   const displayName = userName || "Pengguna";
+  const resolvedName =
+    nameVariant === "lg11"
+      ? truncate11Chars(displayName)
+      : nameVariant === "md4"
+        ? firstFourWordsEllipsis(displayName)
+        : displayName;
 
   return (
     <>
@@ -134,8 +181,10 @@ useEffect(() => {
               ) : isLoggedIn ? (
                 <div className="flex items-center gap-4">
                     <div className={`flex items-center gap-2 pr-4 border-r ${theme === "dark" ? "border-gray-700" : "border-gray-300"}`}>
-                        <div className="text-right hidden lg:block">
-                            <p className={`text-sm font-bold leading-none ${theme === "dark" ? "text-gray-200" : "text-gray-800"}`}>{displayName}</p>
+                        <div className="text-right hidden md:block max-w-[12rem] whitespace-nowrap overflow-hidden text-ellipsis">
+                            <p className={`text-sm font-bold leading-none ${theme === "dark" ? "text-gray-200" : "text-gray-800"}`}>
+                              {resolvedName}
+                            </p>
                             <p className={`text-[10px] ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>UMKM</p>
                         </div>
                         <div className={`w-9 h-9 rounded-full flex items-center justify-center border cursor-pointer transition ${

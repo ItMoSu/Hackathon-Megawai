@@ -165,6 +165,8 @@ export default function ProductsPage() {
   const PRODUCT_NAME_MIN_LENGTH = 2;
   const PRODUCT_NAME_MAX_LENGTH = 100;
 
+  const sanitizeNumericInput = (value: string) => value.replace(/[^\d]/g, "");
+
   const validateProductName = (value: string): string | null => {
     const trimmed = value.trim();
     
@@ -205,6 +207,18 @@ export default function ProductsPage() {
     }
     
     return null;
+  };
+
+  const handlePriceInputChange = (rawValue: string) => {
+    const sanitized = sanitizeNumericInput(rawValue);
+    setPrice(sanitized);
+  };
+
+  const blockNonNumericKeys = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const blockedKeys = ["-", "+", "e", "E"];
+    if (blockedKeys.includes(e.key)) {
+      e.preventDefault();
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -516,7 +530,12 @@ export default function ProductsPage() {
                       placeholder="Contoh: 25000"
                       type="number"
                       value={price}
-                      onChange={(e) => setPrice(e.target.value)}
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      min="0"
+                      step={500}
+                      onChange={(e) => handlePriceInputChange(e.target.value)}
+                      onKeyDown={blockNonNumericKeys}
                       className="focus:ring-red-500"
                     />
                     <Button 

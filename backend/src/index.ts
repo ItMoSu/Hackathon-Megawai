@@ -3,14 +3,14 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import productRoutes from './routes/productRoutes';
-import salesRoutes from './routes/salesRoutes';
-import authRoutes from './routes/authRoutes';
-import reportRoutes from './routes/reportRoutes';
-import intelligenceRoutes from './routes/intelligenceRoutes';
-import analyticsRoutes from './routes/analyticsRoutes';
-import { optionalAuth } from '../lib/auth/middleware';
-import { requestLogger, errorLogger } from './middleware/logger';
+import productRoutes from './routes/productRoutes.js';
+import salesRoutes from './routes/salesRoutes.js';
+import authRoutes from './routes/authRoutes.js';
+import reportRoutes from './routes/reportRoutes.js';
+import intelligenceRoutes from './routes/intelligenceRoutes.js';
+import analyticsRoutes from './routes/analyticsRoutes.js';
+import { optionalAuth } from '../lib/auth/middleware.js';
+import { requestLogger, errorLogger } from './middleware/logger.js';
 
 const app = express()
 const PORT = process.env.PORT || 5000
