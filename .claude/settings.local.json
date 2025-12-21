@@ -3,7 +3,8 @@
     "allow": [
       "Bash(git reset:*)",
       "WebFetch(domain:imphnen-hekaton-oboz.vercel.app)",
-      "WebFetch(domain:imphnen-hekaton.vercel.app)"
+      "WebFetch(domain:imphnen-hekaton.vercel.app)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

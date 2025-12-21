@@ -24,7 +24,7 @@
   ],
   "author": "Megaw AI Team",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "dependencies": {
     "@prisma/client": "^6.19.0",
     "@supabase/supabase-js": "^2.86.0",
