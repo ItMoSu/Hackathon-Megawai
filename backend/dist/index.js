@@ -7,7 +7,7 @@ var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require
 
 // src/index.ts
 import "dotenv/config";
-import express4 from "express";
+import express5 from "express";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit2 from "express-rate-limit";
@@ -3260,6 +3260,387 @@ router6.get("/reports/weekly", AnalyticsController.getWeeklyReport);
 router6.get("/trending", AnalyticsController.getTrendingProducts);
 var analyticsRoutes_default = router6;
 
+// src/routes/sentimentRoutes.ts
+import express4 from "express";
+import axios3 from "axios";
+import multer2 from "multer";
+import FormData from "form-data";
+import Papa from "papaparse";
+var router7 = express4.Router();
+var ML_API_URL3 = (process.env.ML_API_URL || "http://localhost:8000").replace(/\/$/, "");
+var idToEnMap = {
+  // Positif
+  "bagus": "good",
+  "baik": "good",
+  "terbaik": "excellent",
+  "mantap": "great",
+  "suka": "love",
+  "cinta": "love",
+  "puas": "satisfied",
+  "senang": "happy",
+  "ramah": "friendly",
+  "nyaman": "comfortable",
+  "recommended": "recommended",
+  "rekomendasi": "recommended",
+  "rekomen": "recommended",
+  "enak": "delicious",
+  "lezat": "delicious",
+  "nikmat": "delicious",
+  "segar": "fresh",
+  "murah": "cheap",
+  "terjangkau": "affordable",
+  "bersih": "clean",
+  "cepat": "fast",
+  "keren": "cool",
+  "hebat": "great",
+  "favorit": "favorite",
+  "sempurna": "perfect",
+  "mantul": "great",
+  "gokil": "amazing",
+  "kece": "cool",
+  "jos": "great",
+  "top": "top",
+  "asik": "fun",
+  "worthit": "worth",
+  "worth": "worth",
+  // Negatif
+  "buruk": "bad",
+  "jelek": "bad",
+  "parah": "awful",
+  "terburuk": "worst",
+  "mengecewakan": "disappointing",
+  "kecewa": "disappointed",
+  "benci": "hate",
+  "payah": "terrible",
+  "sampah": "trash",
+  "lambat": "slow",
+  "lemot": "slow",
+  "mahal": "expensive",
+  "kotor": "dirty",
+  "jorok": "dirty",
+  "bau": "smelly",
+  "palsu": "fake",
+  "bohong": "lie",
+  "tipu": "scam",
+  "rusak": "broken",
+  "zonk": "bad",
+  "gagal": "failed",
+  "kapok": "regret",
+  "nyesel": "regret",
+  "rugi": "loss",
+  "menyesal": "regret",
+  "hancur": "ruined",
+  "busuk": "rotten",
+  // Netral
+  "biasa": "ordinary",
+  "standar": "standard",
+  "lumayan": "okay",
+  // Negasi
+  "tidak": "not",
+  "nggak": "not",
+  "enggak": "not",
+  "gak": "not",
+  "ga": "not",
+  "ngga": "not",
+  "tak": "not",
+  // Intensifier
+  "sangat": "very",
+  "banget": "really",
+  "sekali": "very",
+  "bgt": "really"
+};
+var translateIdToEn = (text) => {
+  let lower = (text || "").toLowerCase();
+  const phrases = [
+    ["bagus banget", "very good"],
+    ["enak banget", "very delicious"],
+    ["mantap banget", "very great"],
+    ["suka banget", "really love"],
+    ["buruk banget", "very bad"],
+    ["jelek banget", "very bad"],
+    ["kecewa banget", "very disappointed"],
+    ["mahal banget", "very expensive"],
+    ["kotor banget", "very dirty"],
+    ["lambat banget", "very slow"],
+    ["recommended banget", "highly recommended"],
+    ["puas banget", "very satisfied"],
+    ["biasa saja", "average"],
+    ["biasa aja", "average"],
+    ["tidak enak", "not tasty"],
+    ["ga enak", "not tasty"],
+    ["gak enak", "not tasty"],
+    ["tidak bagus", "not good"],
+    ["ga bagus", "not good"],
+    ["gak bagus", "not good"],
+    ["wajib coba", "must try"],
+    ["harus coba", "must try"]
+  ];
+  for (const [src, dst] of phrases) {
+    if (lower.includes(src)) {
+      lower = lower.replace(new RegExp(src, "g"), dst);
+    }
+  }
+  const tokens = lower.split(/\s+/);
+  const translated = tokens.map((tok) => idToEnMap[tok] || tok);
+  return translated.join(" ");
+};
+var simpleSentiment = (text) => {
+  const originalLower = (text || "").toLowerCase();
+  const t = translateIdToEn(text);
+  const positives = [
+    "good",
+    "great",
+    "amazing",
+    "love",
+    "nice",
+    "excellent",
+    "best",
+    "wonderful",
+    "awesome",
+    "affordable",
+    "happy",
+    "delicious",
+    "friendly",
+    "comfortable",
+    "recommended",
+    "fresh",
+    "clean",
+    "fast",
+    "cool",
+    "perfect",
+    "satisfied",
+    "worth",
+    "favorite",
+    "beautiful",
+    "fantastic"
+  ];
+  const negatives = [
+    "bad",
+    "terrible",
+    "worst",
+    "awful",
+    "poor",
+    "hate",
+    "sad",
+    "angry",
+    "dirty",
+    "expensive",
+    "disappointing",
+    "disappointed",
+    "slow",
+    "smelly",
+    "fake",
+    "scam",
+    "broken",
+    "ruined",
+    "trash",
+    "regret",
+    "failed",
+    "rotten"
+  ];
+  const positivesId = [
+    "bagus",
+    "baik",
+    "enak",
+    "mantap",
+    "suka",
+    "cinta",
+    "puas",
+    "senang",
+    "ramah",
+    "nyaman",
+    "recommended",
+    "rekomendasi",
+    "rekomen",
+    "lezat",
+    "nikmat",
+    "segar",
+    "murah",
+    "bersih",
+    "cepat",
+    "keren",
+    "hebat",
+    "favorit",
+    "sempurna",
+    "gokil",
+    "kece",
+    "jos",
+    "top",
+    "worthit",
+    "mantul"
+  ];
+  const negativesId = [
+    "buruk",
+    "jelek",
+    "parah",
+    "terburuk",
+    "mengecewakan",
+    "kecewa",
+    "benci",
+    "payah",
+    "sampah",
+    "lambat",
+    "lemot",
+    "mahal",
+    "kotor",
+    "jorok",
+    "bau",
+    "palsu",
+    "bohong",
+    "tipu",
+    "rusak",
+    "zonk",
+    "gagal",
+    "kapok",
+    "nyesel",
+    "rugi",
+    "menyesal",
+    "hancur",
+    "busuk"
+  ];
+  const neutralId = ["biasa", "standar", "lumayan", "cukup"];
+  let score = 0;
+  positives.forEach((w) => {
+    if (t.includes(w)) score += 1;
+  });
+  negatives.forEach((w) => {
+    if (t.includes(w)) score -= 1;
+  });
+  positivesId.forEach((w) => {
+    if (originalLower.includes(w)) score += 1;
+  });
+  negativesId.forEach((w) => {
+    if (originalLower.includes(w)) score -= 1;
+  });
+  const negationPatterns = [
+    /tidak\s+\w*bagus/i,
+    /tidak\s+\w*enak/i,
+    /tidak\s+\w*puas/i,
+    /ga\s+\w*bagus/i,
+    /ga\s+\w*enak/i,
+    /ga\s+\w*puas/i,
+    /gak\s+\w*bagus/i,
+    /gak\s+\w*enak/i,
+    /gak\s+\w*puas/i,
+    /nggak\s+\w*bagus/i,
+    /nggak\s+\w*enak/i,
+    /kurang\s+\w*bagus/i,
+    /kurang\s+\w*enak/i,
+    /kurang\s+\w*puas/i
+  ];
+  negationPatterns.forEach((pattern) => {
+    if (pattern.test(originalLower)) score -= 2;
+  });
+  const isNeutral = neutralId.some((w) => originalLower.includes(w)) && Math.abs(score) < 2;
+  let sentiment = "Neutral";
+  const absScore = Math.abs(score);
+  if (score > 0) sentiment = "Positive";
+  else if (score < 0) sentiment = "Negative";
+  else if (isNeutral) sentiment = "Neutral";
+  const emoji = sentiment === "Positive" ? "\u{1F60A}" : sentiment === "Negative" ? "\u{1F61E}" : "\u{1F610}";
+  const confidence = sentiment === "Neutral" ? 50 : Math.min(95, 55 + absScore * 10);
+  return { sentiment, confidence, emoji };
+};
+var upload2 = multer2({
+  storage: multer2.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  // 5MB
+  fileFilter: (_req, file, cb) => {
+    const nameOk = file.originalname.toLowerCase().endsWith(".csv");
+    const typeOk = [
+      "text/csv",
+      "application/vnd.ms-excel",
+      "application/octet-stream",
+      "application/csv",
+      "text/plain"
+    ].includes(file.mimetype);
+    if (nameOk || typeOk) return cb(null, true);
+    cb(new Error("Only CSV files are allowed"));
+  }
+});
+router7.post("/analyze-text", async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text || typeof text !== "string") {
+      return res.status(400).json({ error: "text is required" });
+    }
+    const response = await axios3.post(
+      `${ML_API_URL3}/api/sentiment/analyze-text`,
+      { text },
+      { timeout: 2e4 }
+    );
+    return res.json(response.data);
+  } catch (error) {
+    const fallback = simpleSentiment(req.body?.text || "");
+    const upstreamMsg = error?.response?.data?.error || error?.response?.data?.detail || error?.message || "Model utama tidak tersedia, menggunakan fallback heuristik.";
+    return res.status(200).json({ success: true, result: fallback, warning: upstreamMsg });
+  }
+});
+var uploadSingleCsv = (req, res, next) => {
+  upload2.single("file")(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message || "File upload error" });
+    }
+    next();
+  });
+};
+router7.post("/analyze-file", uploadSingleCsv, async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ error: "CSV file is required" });
+    }
+    const formData = new FormData();
+    formData.append("file", file.buffer, {
+      filename: file.originalname || "upload.csv",
+      contentType: file.mimetype || "text/csv"
+    });
+    const response = await axios3.post(`${ML_API_URL3}/api/sentiment/analyze-file`, formData, {
+      headers: formData.getHeaders(),
+      timeout: 3e4,
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity
+    });
+    return res.json(response.data);
+  } catch (error) {
+    try {
+      const file = req.file;
+      if (!file) return res.status(400).json({ error: "CSV file is required" });
+      const parsed = Papa.parse(file.buffer.toString("utf-8"), {
+        header: true,
+        skipEmptyLines: true
+      });
+      const rows = Array.isArray(parsed.data) ? parsed.data : [];
+      let positive = 0, negative = 0, neutral = 0;
+      const results = rows.map((row) => {
+        const text = row?.Review || row?.review || row?.text || row?.clean_review || "";
+        const r = simpleSentiment(text);
+        if (r.sentiment.toLowerCase() === "positive") positive++;
+        else if (r.sentiment.toLowerCase() === "negative") negative++;
+        else neutral++;
+        return { review: text, sentiment: r.sentiment, confidence: r.confidence, emoji: r.emoji };
+      });
+      const total = Math.max(1, results.length);
+      const summary = {
+        positive,
+        negative,
+        neutral,
+        positive_pct: Math.round(positive / total * 1e4) / 100,
+        negative_pct: Math.round(negative / total * 1e4) / 100,
+        neutral_pct: Math.round(neutral / total * 1e4) / 100,
+        total
+      };
+      const upstreamMsg = error?.response?.data?.error || error?.response?.data?.detail || (typeof error?.message === "string" ? error.message : "") || "Model utama tidak tersedia, menggunakan fallback heuristik.";
+      return res.status(200).json({ success: true, summary, results, warning: upstreamMsg });
+    } catch (fallbackErr) {
+      const status = error?.response?.status || 500;
+      const upstreamMsg = error?.response?.data?.error || error?.response?.data?.detail || (typeof error?.message === "string" ? error.message : "") || "Failed to analyze file";
+      return res.status(status).json({ error: upstreamMsg });
+    }
+  }
+});
+var sentimentRoutes_default = router7;
+
 // src/middleware/logger.ts
 var isDev = process.env.NODE_ENV !== "production";
 function requestLogger(req, res, next) {
@@ -3302,7 +3683,7 @@ function errorLogger(err, req, res, next) {
 }
 
 // src/index.ts
-var app = express4();
+var app = express5();
 var PORT = process.env.PORT || 5e3;
 app.set("trust proxy", 1);
 app.use(helmet({
@@ -3370,8 +3751,8 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
-app.use(express4.json({ limit: "10mb" }));
-app.use(express4.urlencoded({ extended: true, limit: "10mb" }));
+app.use(express5.json({ limit: "10mb" }));
+app.use(express5.urlencoded({ extended: true, limit: "10mb" }));
 app.use(requestLogger);
 app.use(optionalAuth);
 app.use("/api/auth", authRoutes_default);
@@ -3380,6 +3761,7 @@ app.use("/api/sales", salesRoutes_default);
 app.use("/api/intelligence", intelligenceRoutes_default);
 app.use("/api/analytics", analyticsRoutes_default);
 app.use("/api/reports", reportRoutes_default);
+app.use("/api/sentiment", sentimentRoutes_default);
 app.get("/health", (req, res) => {
   res.json({
     status: "OK",

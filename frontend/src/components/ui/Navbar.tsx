@@ -14,6 +14,7 @@ const navLinks = [
   { name: "Dashboard", href: "/dashboard" },
   { name: "Input Data", href: "/input" },
   { name: "Laporan", href: "/reports" },
+  { name: "Review", href: "/review" },
 ];
 
 let hasAnimated = false;

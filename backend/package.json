@@ -39,6 +39,8 @@
     "jose": "^6.1.2",
     "jwks-rsa": "^3.2.0",
     "multer": "^2.0.2",
+    "form-data": "^4.0.0",
+    "papaparse": "^5.4.1",
     "node-fetch": "^2.7.0",
     "prisma": "^6.19.0",
     "uuid": "^13.0.0",

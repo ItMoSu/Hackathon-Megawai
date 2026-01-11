@@ -83,7 +83,7 @@ logger = Logger()  # Always same instance
 ```
 ┌─────────────────────────────────────────────┐
 │            CLI Scripts (UI)                 │
-│  preprocess.py  train.py  pipeline.py       │
+│  preprocess.py  train_sales.py  pipeline.py │
 └─────────────────┬───────────────────────────┘
                   │
 ┌─────────────────▼───────────────────────────┐

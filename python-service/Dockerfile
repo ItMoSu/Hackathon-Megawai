@@ -21,6 +21,9 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r /app/requirements.txt
 
+# NLTK data (stopwords/punkt/wordnet for preprocessing)
+RUN python -m nltk.downloader punkt wordnet stopwords
+
 # Copy source
 COPY . /app
 
