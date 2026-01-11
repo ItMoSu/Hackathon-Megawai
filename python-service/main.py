@@ -23,15 +23,43 @@ import re
 import pandas as pd
 import numpy as np
 import nltk
-from nltk.stem import PorterStemmer
-from nltk.corpus import stopwords
 
-# Configure logging
+# Configure logging first
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Ensure NLTK data is available (download if not present)
+def ensure_nltk_data():
+    """Download required NLTK data if not present"""
+    nltk_data_dir = os.environ.get('NLTK_DATA', None)
+    required_resources = ['stopwords', 'punkt', 'wordnet']
+    
+    for resource in required_resources:
+        try:
+            if resource == 'stopwords':
+                nltk.data.find(f'corpora/{resource}')
+            elif resource == 'punkt':
+                nltk.data.find(f'tokenizers/{resource}')
+            elif resource == 'wordnet':
+                nltk.data.find(f'corpora/{resource}')
+        except LookupError:
+            logger.info(f"Downloading NLTK resource: {resource}")
+            try:
+                if nltk_data_dir:
+                    nltk.download(resource, download_dir=nltk_data_dir, quiet=True)
+                else:
+                    nltk.download(resource, quiet=True)
+            except Exception as e:
+                logger.warning(f"Failed to download {resource}: {e}")
+
+# Download NLTK data at module load
+ensure_nltk_data()
+
+from nltk.stem import PorterStemmer
+from nltk.corpus import stopwords
 
 # Constants for validation
 MAX_SALES_DATA_POINTS = 50000  # Support up to 50k rows for 1+ year data
@@ -96,11 +124,7 @@ ensemble = EnsemblePredictor()
 report_ranker = WeeklyReportRanker(default_strategy="balanced")
 
 # --- Sentiment helpers ---
-try:
-    nltk.data.find('corpora/stopwords')
-except LookupError:
-    nltk.download('stopwords', quiet=True)
-
+# NLTK resources already ensured at module load via ensure_nltk_data()
 STOPWORDS = set(stopwords.words('english'))
 STEMMER = PorterStemmer()
 
