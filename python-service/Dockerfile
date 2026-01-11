@@ -5,10 +5,10 @@ WORKDIR /app
 
 # Environment tweaks
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    NLTK_DATA=/app/nltk_data
 
 # System deps
-# PERUBAHAN DISINI: Mengganti 'openjdk-17-jre-headless' menjadi 'default-jre-headless'
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       build-essential \
@@ -16,13 +16,16 @@ RUN apt-get update && \
       libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python deps
+# Copy requirements first for better layer caching
 COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r /app/requirements.txt
 
-# NLTK data (stopwords/punkt/wordnet for preprocessing)
-RUN python -m nltk.downloader punkt wordnet stopwords
+# Install Python deps - ensure nltk is installed
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r /app/requirements.txt && \
+    pip install --no-cache-dir nltk>=3.8.1
+
+# Download NLTK data after nltk is installed
+RUN python -c "import nltk; nltk.download('punkt', download_dir='/app/nltk_data'); nltk.download('wordnet', download_dir='/app/nltk_data'); nltk.download('stopwords', download_dir='/app/nltk_data')"
 
 # Copy source
 COPY . /app
@@ -30,5 +33,5 @@ COPY . /app
 # Optional: relax permissions
 RUN chmod -R 755 /app
 
-# Default command
+# Default command - use PORT env var for Hugging Face compatibility
 CMD ["python", "main.py"]

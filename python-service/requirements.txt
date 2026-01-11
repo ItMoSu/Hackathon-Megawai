@@ -23,4 +23,6 @@ gunicorn>=21.0.0             # Production WSGI server
 
 # API client/testing
 requests>=2.31.0
+
+# NLP
 nltk>=3.8.1
