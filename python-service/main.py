@@ -752,6 +752,89 @@ def maybe_translate_id_to_en(text: str) -> str:
     # Phrase-level replacements to strengthen sentiment cues (LONGER phrases first!)
     # Order matters: longer phrases should be matched before shorter ones
     phrase_map = [
+        # ============= NEGASI (HARUS DI ATAS - PRIORITAS TINGGI) =============
+        # Negasi "suka" → "hate/dislike"
+        ("tidak suka sama sekali", "really hate"),
+        ("tidak suka banget", "really hate"),
+        ("tidak suka", "dislike"),
+        ("ga suka sama sekali", "really hate"),
+        ("ga suka banget", "really hate"),
+        ("ga suka", "dislike"),
+        ("gak suka sama sekali", "really hate"),
+        ("gak suka banget", "really hate"),
+        ("gak suka", "dislike"),
+        ("gk suka", "dislike"),
+        ("g suka", "dislike"),
+        ("nggak suka", "dislike"),
+        ("ngga suka", "dislike"),
+        ("enggak suka", "dislike"),
+        ("tak suka", "dislike"),
+        ("tdk suka", "dislike"),
+        ("ndak suka", "dislike"),
+        ("kagak suka", "dislike"),
+        ("ogah", "refuse"),
+        
+        # Negasi "enak" → "not tasty"
+        ("tidak enak sama sekali", "really not tasty"),
+        ("tidak enak banget", "really not tasty"),
+        ("tidak enak", "not tasty"),
+        ("ga enak banget", "really not tasty"),
+        ("ga enak", "not tasty"),
+        ("gak enak banget", "really not tasty"),
+        ("gak enak", "not tasty"),
+        ("gk enak", "not tasty"),
+        ("nggak enak", "not tasty"),
+        ("ngga enak", "not tasty"),
+        ("enggak enak", "not tasty"),
+        ("kurang enak", "not tasty"),
+        
+        # Negasi "bagus" → "not good"
+        ("tidak bagus sama sekali", "really not good"),
+        ("tidak bagus banget", "really bad"),
+        ("tidak bagus", "not good"),
+        ("ga bagus banget", "really bad"),
+        ("ga bagus", "not good"),
+        ("gak bagus banget", "really bad"),
+        ("gak bagus", "not good"),
+        ("gk bagus", "not good"),
+        ("nggak bagus", "not good"),
+        ("kurang bagus", "not good"),
+        
+        # Negasi "puas" → "not satisfied"
+        ("tidak puas sama sekali", "really unsatisfied"),
+        ("tidak puas banget", "really unsatisfied"),
+        ("tidak puas", "unsatisfied"),
+        ("ga puas", "unsatisfied"),
+        ("gak puas", "unsatisfied"),
+        ("kurang puas", "unsatisfied"),
+        
+        # Negasi "nyaman" → "uncomfortable"
+        ("tidak nyaman", "uncomfortable"),
+        ("ga nyaman", "uncomfortable"),
+        ("gak nyaman", "uncomfortable"),
+        ("kurang nyaman", "uncomfortable"),
+        
+        # Negasi "recommended" → "not recommended"
+        ("tidak recommended", "not recommended"),
+        ("ga recommended", "not recommended"),
+        ("gak recommended", "not recommended"),
+        ("tidak direkomendasikan", "not recommended"),
+        ("ga direkomendasikan", "not recommended"),
+        ("kurang recommended", "not recommended"),
+        ("kurang rekomen", "not recommended"),
+        
+        # Negasi umum lainnya
+        ("tidak worth it", "not worth it"),
+        ("ga worth it", "not worth it"),
+        ("gak worth it", "not worth it"),
+        ("tidak worthit", "not worth it"),
+        ("ga worthit", "not worth it"),
+        ("tidak sesuai ekspektasi", "did not meet expectations"),
+        ("tidak sesuai harapan", "did not meet expectations"),
+        ("ga sesuai ekspektasi", "did not meet expectations"),
+        ("tidak seperti yang diharapkan", "not as expected"),
+        ("bukan yang terbaik", "not the best"),
+        
         # ============= POSITIF SANGAT KUAT =============
         ("sangat sangat bagus", "extremely excellent"),
         ("sangat bagus sekali", "extremely good"),
@@ -1145,6 +1228,53 @@ def predict_sentiment(text: str):
 
     # Lexical heuristic boost (English side, post-translation) to avoid neutral drift
     lower_src = (source_text or "").lower()
+    
+    # ============= NEGATION OVERRIDE - CHECK FIRST =============
+    # These negation patterns ALWAYS indicate negative sentiment and override model
+    negation_patterns = [
+        # Negasi "suka"
+        "tidak suka", "ga suka", "gak suka", "gk suka", "g suka",
+        "nggak suka", "ngga suka", "enggak suka", "tak suka", "tdk suka",
+        "ndak suka", "kagak suka",
+        # Negasi "enak"
+        "tidak enak", "ga enak", "gak enak", "gk enak", "nggak enak", 
+        "ngga enak", "enggak enak", "kurang enak",
+        # Negasi "bagus"
+        "tidak bagus", "ga bagus", "gak bagus", "gk bagus", "nggak bagus",
+        "kurang bagus",
+        # Negasi "puas"
+        "tidak puas", "ga puas", "gak puas", "kurang puas",
+        # Negasi "nyaman"
+        "tidak nyaman", "ga nyaman", "gak nyaman", "kurang nyaman",
+        # Negasi recommended
+        "tidak recommended", "ga recommended", "gak recommended",
+        "tidak direkomendasikan", "ga direkomendasikan",
+        "tidak rekomen", "ga rekomen", "gak rekomen",
+        # Negasi worth
+        "tidak worth", "ga worth", "gak worth",
+        # English negations (from translation)
+        "dislike", "don't like", "dont like", "do not like",
+        "not tasty", "not good", "not recommended", "not worth",
+        "unsatisfied", "uncomfortable",
+    ]
+    
+    # Check for negation pattern FIRST - this overrides everything
+    negation_hit = any(neg_pattern in original_lower for neg_pattern in negation_patterns)
+    negation_hit_en = any(neg_pattern in lower_src for neg_pattern in negation_patterns)
+    
+    if negation_hit or negation_hit_en:
+        # Negation detected - force negative sentiment
+        label = "Negative"
+        confidence = max(confidence, 0.85)  # High confidence for negation
+        emoji = "😞"
+        return {
+            "sentiment": label,
+            "confidence": round(confidence * 100, 2),
+            "emoji": emoji,
+            "cleaned": cleaned,
+        }
+    
+    # ============= END NEGATION OVERRIDE =============
     
     # Strong positive cues (English)
     pos_cues = [
@@ -2347,4 +2477,27 @@ def get_weekly_report(request: Request, product_id: Optional[str] = None):
 if __name__ == "__main__":
     import uvicorn
     logger.info(f"Starting server with BASE_DIR: {BASE_DIR}")
-    uvicorn.run(app, host="0.0.0.0", port=7860)
+    # Use platform-provided PORT when available (recommended for deployment platforms).
+    # For Hugging Face Spaces, the default port is commonly 7860.
+    # For local development, default to 8000 (matches repo README).
+    host = os.getenv("HOST", "0.0.0.0")
+
+    port_env = os.getenv("PORT")
+    if port_env:
+        port = int(port_env)
+    else:
+        # Heuristic: running on Hugging Face Spaces (PORT not always injected in all setups)
+        is_hf_spaces = any(
+            os.getenv(k)
+            for k in [
+                "SPACE_ID",
+                "SPACE_REPO_NAME",
+                "SPACE_AUTHOR_NAME",
+                "HF_SPACE",
+                "SYSTEM",  # often set to "spaces" on HF
+            ]
+        ) or (os.getenv("SYSTEM", "").lower() == "spaces")
+
+        port = 7860 if is_hf_spaces else 8000
+
+    uvicorn.run(app, host=host, port=port)
