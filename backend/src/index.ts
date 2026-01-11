@@ -9,6 +9,7 @@ import authRoutes from './routes/authRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import intelligenceRoutes from './routes/intelligenceRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
+import sentimentRoutes from './routes/sentimentRoutes.js';
 import { optionalAuth } from '../lib/auth/middleware.js';
 import { requestLogger, errorLogger } from './middleware/logger.js';
 
@@ -117,6 +118,7 @@ app.use('/api/sales', salesRoutes);
 app.use('/api/intelligence', intelligenceRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/sentiment', sentimentRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ 

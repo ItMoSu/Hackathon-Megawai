@@ -116,7 +116,7 @@ def main():
             print("="*60)
             print(f"📁 Cleaned data saved to: {PREPROCESSING_CONFIG.output_folder}")
             print(f"📊 Valid datasets: {len(valid_datasets)}/{len(results)}")
-            print(f"\n➡️  Next step: python train.py\n")
+            print(f"\n➡️  Next step: python train_sales.py\n")
             logger.info(f"Preprocessing successful: {len(valid_datasets)} valid datasets")
             return 0
         

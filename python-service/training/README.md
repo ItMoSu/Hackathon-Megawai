@@ -42,7 +42,7 @@ training/
 │   └── validators.py      # Data validation
 ├── config.py              # ⚙️ Configuration
 ├── preprocess.py          # 🔄 CLI: Preprocessing
-├── train.py               # 🎯 CLI: Training
+├── train_sales.py         # 🎯 CLI: Training (Sales)
 └── pipeline.py            # 🚀 CLI: Complete pipeline
 ```
 
@@ -61,7 +61,7 @@ Run from `python-service/training`:
 python preprocess.py
 
 # 2) Train models from preprocessed data
-python train.py
+python train_sales.py
 
 # Or run everything in one go
 python pipeline.py
